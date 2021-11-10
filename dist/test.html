@@ -1,0 +1,16 @@
+<html>
+
+<head></head>
+
+<body>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+
+    <a-scene altspace='vertical-align: bottom;'>
+        <a-sky src="img/sky.jpg"></a-sky>
+        <a-entity light="type: point; intensity: 0.75; distance: 50; decay: 2" position="0 3 0" animation-mixer>
+        </a-entity>
+        <a-gltf-model src="model/geometry-test.gltf" position="0 1 -0.5" scale="0.01 0.01 0.01"></a-gltf-model>
+    </a-scene>
+</body>
+
+</html>

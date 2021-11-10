@@ -1,0 +1,24 @@
+{
+  "name": "solward",
+  "version": "1.0.0",
+  "description": "Solward - Hope : An asteroid mining game.",
+  "main": "webpack.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdeeds/solward.git"
+  },
+  "author": "Matt Deeds, Steven Deeds",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mdeeds/solward/issues"
+  },
+  "homepage": "https://github.com/mdeeds/solward#readme",
+  "browser": {
+    "fs": false,
+    "path": false,
+    "os": false
+  }
+}
