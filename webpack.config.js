@@ -1,7 +1,5 @@
 const HtmlWebPackPlugin = require("html-webpack-plugin");
 
-require('ammojs-typed');
-
 module.exports = {
   entry: {
     index: "./src/index.js",
@@ -13,26 +11,6 @@ module.exports = {
   optimization: {
     minimize: false,
   },
-  module: {
-    rules: [
-      {
-        test: /\.html$/,
-        use: {
-          loader: "html-loader",
-          options: { minimize: false }
-        }
-      },
-      {
-        test: /\.css$/i,
-        use: ['style-loader', 'css-loader'],
-      },
-      {
-        test: /\.js.map$/,
-        enforce: "pre",
-        use: ["source-map-loader"],
-      },
-    ]
-  },
   plugins: [
     new HtmlWebPackPlugin({
       name: "index",
@@ -41,9 +19,4 @@ module.exports = {
       chunks: ['index']
     }),
   ],
-  module: {  // If I remove this, webpack fails. \(~n~)/
-    rules: [
-    ],
-  },
-  devtool: "source-map",
 }
