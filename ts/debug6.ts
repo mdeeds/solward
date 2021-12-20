@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import AmmoModule from "ammojs-typed";
+import { Model } from "./model";
 
 export class Debug6 {
   private ammo: typeof AmmoModule;
@@ -39,7 +40,6 @@ export class Debug6 {
   private camera: THREE.PerspectiveCamera;
   private scene: THREE.Scene;;
   private renderer: THREE.WebGLRenderer;
-  private terrainMesh: THREE.Mesh;
   private clock = new THREE.Clock();
 
   // Physics variables
@@ -54,9 +54,10 @@ export class Debug6 {
   private ammoHeightData = null;
 
   private time = 0;
-  private objectTimePeriod = 3;
+  private objectTimePeriod = 0.5;
   private timeNextSpawn = this.time + this.objectTimePeriod;
-  private maxNumObjects = 30;
+  private maxNumObjects = 300;
+  private physicsInitialized = false;
 
   private setup() {
     AmmoModule().then((lib) => {
@@ -73,7 +74,6 @@ export class Debug6 {
       this.terrainWidth, this.terrainDepth,
       this.terrainMinHeight, this.terrainMaxHeight);
     this.initGraphics();
-    this.initPhysics();
   }
 
   initGraphics() {
@@ -89,7 +89,8 @@ export class Debug6 {
     // stats.domElement.style.top = '0px';
     // container.appendChild(stats.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 2000);
+    this.camera = new THREE.PerspectiveCamera(
+      60, window.innerWidth / window.innerHeight, 0.2, 2000);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xbfd1e5);
@@ -104,56 +105,17 @@ export class Debug6 {
     // const controls = new OrbitControls(camera, renderer.domElement);
     // controls.enableZoom = false;
 
-    const geometry = new THREE.PlaneGeometry(
-      this.terrainWidthExtents, this.terrainDepthExtents,
-      this.terrainWidth - 1, this.terrainDepth - 1);
-    geometry.rotateX(- Math.PI / 2);
-
-    const vertices = geometry.getAttribute('position');
-    vertices.needsUpdate = true;
-
-    for (let i = 0; i < vertices.count; ++i) {
-      vertices.setY(i, this.heightData[i]);
-    }
-
-    geometry.computeVertexNormals();
-
-    const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xC7C7C7 });
-    this.terrainMesh = new THREE.Mesh(geometry, groundMaterial);
-    this.terrainMesh.receiveShadow = true;
-    this.terrainMesh.castShadow = true;
-
-    this.scene.add(this.terrainMesh);
-
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load("textures/grid.png", function (texture) {
-
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(this.terrainWidth - 1, this.terrainDepth - 1);
-      groundMaterial.map = texture;
-      groundMaterial.needsUpdate = true;
-
+    Model.Load('model/asteroid.gltf', { singleSided: true }).then((m: Model) => {
+      m.scene.scale.set(0.2, 0.2, 0.2);
+      m.scene.position.set(0, -30, 0);
+      this.scene.add(m.scene);
+      this.initPhysics(m.scene);
     });
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(100, 100, 50);
-    light.castShadow = true;
-    const dLight = 200;
-    const sLight = dLight * 0.25;
-    light.shadow.camera.left = - sLight;
-    light.shadow.camera.right = sLight;
-    light.shadow.camera.top = sLight;
-    light.shadow.camera.bottom = - sLight;
-
-    light.shadow.camera.near = dLight / 30;
-    light.shadow.camera.far = dLight;
-
-    light.shadow.mapSize.x = 1024 * 2;
-    light.shadow.mapSize.y = 1024 * 2;
-
+    light.castShadow = false;
     this.scene.add(light);
-
 
     window.addEventListener('resize', () => this.onWindowResize());
   }
@@ -165,7 +127,7 @@ export class Debug6 {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  initPhysics() {
+  initPhysics(terrain: THREE.Object3D) {
     // Physics configuration
     this.collisionConfiguration =
       new this.ammo.btDefaultCollisionConfiguration();
@@ -180,7 +142,7 @@ export class Debug6 {
 
     // Create the terrain body
 
-    const groundShape = this.createTerrainShape();
+    const groundShape = this.createShapeFromGeometry(terrain);
     const groundTransform = new this.ammo.btTransform();
     groundTransform.setIdentity();
     // Shifts the terrain, since bullet re-centers it on its bounding box.
@@ -189,11 +151,13 @@ export class Debug6 {
     const groundMass = 0;
     const groundLocalInertia = new this.ammo.btVector3(0, 0, 0);
     const groundMotionState = new this.ammo.btDefaultMotionState(groundTransform);
-    const groundBody = new this.ammo.btRigidBody(new this.ammo.btRigidBodyConstructionInfo(groundMass, groundMotionState, groundShape, groundLocalInertia));
+    const groundBody = new this.ammo.btRigidBody(
+      new this.ammo.btRigidBodyConstructionInfo(
+        groundMass, groundMotionState, groundShape, groundLocalInertia));
     this.physicsWorld.addRigidBody(groundBody);
 
     this.transformAux1 = new this.ammo.btTransform();
-
+    this.physicsInitialized = true;
   }
 
   generateHeight(width: number, depth: number, minHeight: number, maxHeight: number) {
@@ -220,6 +184,60 @@ export class Debug6 {
     }
     return data;
   }
+
+  private addToShapeFromGeometry(o: THREE.Object3D,
+    mesh: AmmoModule.btTriangleMesh) {
+    if (o instanceof THREE.Mesh) {
+      const geometry: THREE.BufferGeometry = o.geometry;
+      let transform = new THREE.Matrix4();
+      transform.copy(o.matrix);
+      let p = o.parent;
+      while (p != null) {
+        // Maybe I need to compose these the other way???
+        transform.multiplyMatrices(transform, p.matrix);
+        p = p.parent;
+      }
+      const positionAttribute = geometry.attributes.position;
+      if (!geometry.index) {
+        throw new Error("Must have index.");
+      }
+      const index = geometry.index;
+      for (var i = 0; i < geometry.attributes.position.count / 3; i++) {
+        const vertexAIndex = index.getX(i * 3);
+        const vertexBIndex = index.getX(i * 3 + 1);
+        const vertexCIndex = index.getX(i * 3 + 2);
+        const a = new THREE.Vector3();
+        a.fromBufferAttribute(positionAttribute, vertexAIndex);
+        a.applyMatrix4(transform);
+        const b = new THREE.Vector3();
+        b.fromBufferAttribute(positionAttribute, vertexBIndex);
+        b.applyMatrix4(transform);
+        const c = new THREE.Vector3();
+        c.fromBufferAttribute(positionAttribute, vertexCIndex);
+        c.applyMatrix4(transform);
+        mesh.addTriangle(
+          new this.ammo.btVector3(a.x, a.y, a.z),
+          new this.ammo.btVector3(b.x, b.y, b.z),
+          new this.ammo.btVector3(c.x, c.y, c.z),
+          false
+        );
+      }
+    }
+    for (const c of o.children) {
+      this.addToShapeFromGeometry(c, mesh);
+    }
+  }
+
+  createShapeFromGeometry(o: THREE.Object3D) {
+    console.log('Begin create shape.');
+    const mesh: AmmoModule.btTriangleMesh = new this.ammo.btTriangleMesh(true, true);
+    this.addToShapeFromGeometry(o, mesh);
+    console.log('Mesh is filled.');
+    var shape = new this.ammo.btBvhTriangleMeshShape(mesh, true, true);
+    console.log('End create shape.');
+    return shape;
+  }
+
 
   createTerrainShape() {
     // This parameter is not really used, since we are using PHY_FLOAT height data type and hence it is ignored
@@ -273,6 +291,9 @@ export class Debug6 {
   }
 
   generateObject() {
+    if (!this.physicsInitialized) {
+      return;
+    }
     const numTypes = 4;
     const objectType = Math.ceil(Math.random() * numTypes);
 
@@ -376,7 +397,9 @@ export class Debug6 {
       this.generateObject();
       this.timeNextSpawn = this.time + this.objectTimePeriod;
     }
-    this.updatePhysics(deltaTime);
+    if (this.physicsInitialized) {
+      this.updatePhysics(deltaTime);
+    }
     this.renderer.render(this.scene, this.camera);
     this.time += deltaTime;
   }
