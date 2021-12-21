@@ -101,7 +101,15 @@ export class Debug6 {
       const o = new THREE.Group();
       o.add(mesh);
       const sp = new URL(document.URL).searchParams;
-      o.position.set(parseFloat(sp.get('x')), -300, parseFloat(sp.get('z')));
+      let x = -220;
+      let z = 150;
+      if (sp.get('x')) {
+        x = parseFloat(sp.get('x'));
+      }
+      if (sp.get('z')) {
+        z = parseFloat(sp.get('z'));
+      }
+      o.position.set(x, -300, z);
       o.scale.set(1, 1, 1);
       o.rotation.set(-Math.PI / 2, 0, 0);
       console.log(`rotation: ${JSON.stringify(o.rotation)}`);
@@ -317,7 +325,7 @@ export class Debug6 {
     }
     if (this.dynamicObjects.length > 30) {
       this.camera.position.copy(this.dynamicObjects[30].position);
-      this.camera.lookAt(0, -400, 0);
+      this.camera.lookAt(0, -250, 0);
     } else {
       this.camera.position.set(0, 60, 0);
     }
