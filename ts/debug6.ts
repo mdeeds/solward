@@ -85,14 +85,13 @@ export class Debug6 {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xbfd1e5);
 
-    this.camera.position.y = 50;
-    this.camera.position.z = 50;
+    this.camera.position.set(0, 60, 0);
     this.camera.lookAt(0, 0, 0);
 
     // const controls = new OrbitControls(camera, renderer.domElement);
     // controls.enableZoom = false;
 
-    Model.Load('model/asteroid1.gltf', { singleSided: true }).then((m: Model) => {
+    Model.Load('model/asteroid4-collider.gltf', { singleSided: true }).then((m: Model) => {
       // const geo = new THREE.SphereBufferGeometry(2);
       // geo.scale(10, 1, 10);
       // geo.translate(0, -15, 0);
@@ -101,9 +100,10 @@ export class Debug6 {
       const mesh = m.scene;
       const o = new THREE.Group();
       o.add(mesh);
-      o.position.set(0, -40, 0);
-      o.scale.set(30, 30, 30);
-      o.rotation.set(0.1, 0, 0);
+      const sp = new URL(document.URL).searchParams;
+      o.position.set(parseFloat(sp.get('x')), -300, parseFloat(sp.get('z')));
+      o.scale.set(1, 1, 1);
+      o.rotation.set(-Math.PI / 2, 0, 0);
       console.log(`rotation: ${JSON.stringify(o.rotation)}`);
       this.scene.add(o);
       console.log(`rotation: ${JSON.stringify(o.rotation)}`);
@@ -183,8 +183,8 @@ export class Debug6 {
         rotation.makeRotationFromEuler(p.rotation);
         console.log('rotation: ' + JSON.stringify(rotation) + ' = ' + JSON.stringify(p.rotation));
         transform.multiplyMatrices(transform, translation);
-        transform.multiplyMatrices(transform, scale);
         transform.multiplyMatrices(transform, rotation);
+        transform.multiplyMatrices(transform, scale);
         transformStack.push(transform);
         p = p.parent;
       }
@@ -314,6 +314,12 @@ export class Debug6 {
     }
     if (this.physicsInitialized) {
       this.updatePhysics(deltaTime);
+    }
+    if (this.dynamicObjects.length > 30) {
+      this.camera.position.copy(this.dynamicObjects[30].position);
+      this.camera.lookAt(0, -400, 0);
+    } else {
+      this.camera.position.set(0, 60, 0);
     }
     this.renderer.render(this.scene, this.camera);
     this.time += deltaTime;
