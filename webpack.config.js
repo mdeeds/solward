@@ -19,4 +19,5 @@ module.exports = {
       chunks: ['index']
     }),
   ],
+  devtool: "source-map",
 }

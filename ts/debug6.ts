@@ -24,16 +24,9 @@ export class Debug6 {
   //   </head>
   //   <body>
 
-  private terrainWidthExtents = 100;
-  private terrainDepthExtents = 100;
-  private terrainWidth = 128;
-  private terrainDepth = 128;
-  private terrainHalfWidth = this.terrainWidth / 2;
-  private terrainHalfDepth = this.terrainDepth / 2;
+  private terrainWidth = 50;
+  private terrainDepth = 50;
   private terrainMaxHeight = 8;
-  private terrainMinHeight = - 2;
-
-  private heightData: Float32Array = null;
 
   // Graphics variables
   private container: HTMLElement;
@@ -54,7 +47,7 @@ export class Debug6 {
   private ammoHeightData = null;
 
   private time = 0;
-  private objectTimePeriod = 0.5;
+  private objectTimePeriod = 0.05;
   private timeNextSpawn = this.time + this.objectTimePeriod;
   private maxNumObjects = 300;
   private physicsInitialized = false;
@@ -70,9 +63,6 @@ export class Debug6 {
 
 
   init() {
-    this.heightData = this.generateHeight(
-      this.terrainWidth, this.terrainDepth,
-      this.terrainMinHeight, this.terrainMaxHeight);
     this.initGraphics();
   }
 
@@ -95,21 +85,29 @@ export class Debug6 {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xbfd1e5);
 
-    this.camera.position.y = this.heightData[
-      this.terrainHalfWidth + this.terrainHalfDepth * this.terrainWidth] *
-      (this.terrainMaxHeight - this.terrainMinHeight) + 5;
-
-    this.camera.position.z = this.terrainDepthExtents / 2;
+    this.camera.position.y = 50;
+    this.camera.position.z = 50;
     this.camera.lookAt(0, 0, 0);
 
     // const controls = new OrbitControls(camera, renderer.domElement);
     // controls.enableZoom = false;
 
-    Model.Load('model/asteroid.gltf', { singleSided: true }).then((m: Model) => {
-      m.scene.scale.set(0.2, 0.2, 0.2);
-      m.scene.position.set(0, -30, 0);
-      this.scene.add(m.scene);
-      this.initPhysics(m.scene);
+    Model.Load('model/ball.gltf', { singleSided: true }).then((m: Model) => {
+      // const geo = new THREE.SphereBufferGeometry(2);
+      // geo.scale(10, 1, 10);
+      // geo.translate(0, -15, 0);
+      // geo.rotateZ(-0.1);
+      // const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 'blue' }));
+      const mesh = m.scene;
+      const o = new THREE.Group();
+      o.add(mesh);
+      o.position.set(0, -20, 0);
+      o.scale.set(0.2, 0.2, 0.2);
+      o.rotation.set(0.1, 0, 0);
+      console.log(`rotation: ${JSON.stringify(o.rotation)}`);
+      this.scene.add(o);
+      console.log(`rotation: ${JSON.stringify(o.rotation)}`);
+      this.initPhysics(o);
     });
 
     const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -128,6 +126,7 @@ export class Debug6 {
   }
 
   initPhysics(terrain: THREE.Object3D) {
+    console.log(`rotation: ${JSON.stringify(terrain.rotation)}`);
     // Physics configuration
     this.collisionConfiguration =
       new this.ammo.btDefaultCollisionConfiguration();
@@ -142,12 +141,13 @@ export class Debug6 {
 
     // Create the terrain body
 
+    console.log(`rotation: ${JSON.stringify(terrain.rotation)}`);
     const groundShape = this.createShapeFromGeometry(terrain);
+    console.log(`rotation: ${JSON.stringify(terrain.rotation)}`);
     const groundTransform = new this.ammo.btTransform();
     groundTransform.setIdentity();
     // Shifts the terrain, since bullet re-centers it on its bounding box.
-    groundTransform.setOrigin(new this.ammo.btVector3(0, (
-      this.terrainMaxHeight + this.terrainMinHeight) / 2, 0));
+    groundTransform.setOrigin(new this.ammo.btVector3(0, 0, 0));
     const groundMass = 0;
     const groundLocalInertia = new this.ammo.btVector3(0, 0, 0);
     const groundMotionState = new this.ammo.btDefaultMotionState(groundTransform);
@@ -160,49 +160,47 @@ export class Debug6 {
     this.physicsInitialized = true;
   }
 
-  generateHeight(width: number, depth: number, minHeight: number, maxHeight: number) {
-    // Generates the height data (a sinus wave)
-    const size = width * depth;
-    const data = new Float32Array(size);
-
-    const hRange = maxHeight - minHeight;
-    const w2 = width / 2;
-    const d2 = depth / 2;
-    const phaseMult = 12;
-
-    let p = 0;
-
-    for (let j = 0; j < depth; j++) {
-      for (let i = 0; i < width; i++) {
-        const radius = Math.sqrt(
-          Math.pow((i - w2) / w2, 2.0) +
-          Math.pow((j - d2) / d2, 2.0));
-        const height = (Math.sin(radius * phaseMult) + 1) * 0.5 * hRange + minHeight;
-        data[p] = height;
-        p++;
-      }
-    }
-    return data;
-  }
-
   private addToShapeFromGeometry(o: THREE.Object3D,
     mesh: AmmoModule.btTriangleMesh) {
+    console.log(`rotation: ${JSON.stringify(o.rotation)}`);
     if (o instanceof THREE.Mesh) {
       const geometry: THREE.BufferGeometry = o.geometry;
-      let transform = new THREE.Matrix4();
-      transform.copy(o.matrix);
-      let p = o.parent;
+      let p: THREE.Object3D = o;
+      const translation = new THREE.Matrix4();
+      const scale = new THREE.Matrix4();
+      const rotation = new THREE.Matrix4();
+      console.log('Applying transformations');
+      const transformStack: THREE.Matrix4[] = [];
       while (p != null) {
-        // Maybe I need to compose these the other way???
-        transform.multiplyMatrices(transform, p.matrix);
+        let transform = new THREE.Matrix4();
+        transform.identity();
+        console.log(p.name);
+        console.log('matrix: ' + JSON.stringify(p.matrix));
+        translation.makeTranslation(p.position.x, p.position.y, p.position.z);
+        console.log('translation: ' + JSON.stringify(translation));
+        scale.makeScale(p.scale.x, p.scale.y, p.scale.z);
+        console.log('scale: ' + JSON.stringify(scale));
+        rotation.makeRotationFromEuler(p.rotation);
+        console.log('rotation: ' + JSON.stringify(rotation) + ' = ' + JSON.stringify(p.rotation));
+        transform.multiplyMatrices(transform, translation);
+        transform.multiplyMatrices(transform, scale);
+        transform.multiplyMatrices(transform, rotation);
+        transformStack.push(transform);
         p = p.parent;
       }
+      let transform = new THREE.Matrix4();
+      transform.identity();
+      while (transformStack.length > 0) {
+        transform.multiplyMatrices(transform, transformStack.pop());
+      }
+      console.log('Total: ' + JSON.stringify(transform));
       const positionAttribute = geometry.attributes.position;
       if (!geometry.index) {
         throw new Error("Must have index.");
       }
       const index = geometry.index;
-      for (var i = 0; i < geometry.attributes.position.count / 3; i++) {
+      let maxX = 0;
+      for (var i = 0; i < index.count / 3; i++) {
         const vertexAIndex = index.getX(i * 3);
         const vertexBIndex = index.getX(i * 3 + 1);
         const vertexCIndex = index.getX(i * 3 + 2);
@@ -221,7 +219,9 @@ export class Debug6 {
           new this.ammo.btVector3(c.x, c.y, c.z),
           false
         );
+        maxX = Math.max(maxX, a.x, b.x, c.x);
       }
+      console.log(`maxX: ${maxX}`);
     }
     for (const c of o.children) {
       this.addToShapeFromGeometry(c, mesh);
@@ -230,6 +230,8 @@ export class Debug6 {
 
   createShapeFromGeometry(o: THREE.Object3D) {
     console.log('Begin create shape.');
+    console.log(`rotation: ${JSON.stringify(o.rotation)}`);
+
     const mesh: AmmoModule.btTriangleMesh = new this.ammo.btTriangleMesh(true, true);
     this.addToShapeFromGeometry(o, mesh);
     console.log('Mesh is filled.');
@@ -238,122 +240,31 @@ export class Debug6 {
     return shape;
   }
 
-
-  createTerrainShape() {
-    // This parameter is not really used, since we are using PHY_FLOAT height data type and hence it is ignored
-    const heightScale = 1;
-    // Up axis = 0 for X, 1 for Y, 2 for Z. Normally 1 = Y is used.
-    const upAxis = 1;
-    // hdt, height data type. "PHY_FLOAT" is used. Possible values are "PHY_FLOAT", "PHY_UCHAR", "PHY_SHORT"
-    const hdt = "PHY_FLOAT";
-    // Set this to your needs (inverts the triangles)
-    const flipQuadEdges = false;
-    // Creates height data buffer in Ammo heap
-    this.ammoHeightData = this.ammo._malloc(
-      4 * this.terrainWidth * this.terrainDepth);
-
-    // Copy the javascript height data array to the Ammo one.
-    let p = 0;
-    let p2 = 0;
-
-    for (let j = 0; j < this.terrainDepth; j++) {
-      for (let i = 0; i < this.terrainWidth; i++) {
-        // write 32-bit float data to memory
-        this.ammo.HEAPF32[this.ammoHeightData + p2 >> 2] = this.heightData[p];
-        p++;
-        // 4 bytes/float
-        p2 += 4;
-      }
-    }
-
-    // Creates the heightfield physics shape
-    const heightFieldShape = new this.ammo.btHeightfieldTerrainShape(
-      this.terrainWidth,
-      this.terrainDepth,
-      this.ammoHeightData,
-      heightScale,
-      this.terrainMinHeight,
-      this.terrainMaxHeight,
-      upAxis,
-      hdt,
-      flipQuadEdges
-    );
-
-    // Set horizontal scale
-    const scaleX = this.terrainWidthExtents / (this.terrainWidth - 1);
-    const scaleZ = this.terrainDepthExtents / (this.terrainDepth - 1);
-    heightFieldShape.setLocalScaling(new this.ammo.btVector3(scaleX, 1, scaleZ));
-
-    heightFieldShape.setMargin(0.05);
-
-    return heightFieldShape;
-
-  }
-
   generateObject() {
     if (!this.physicsInitialized) {
       return;
     }
-    const numTypes = 4;
-    const objectType = Math.ceil(Math.random() * numTypes);
-
     let threeObject = null;
     let shape = null;
 
-    const objectSize = 3;
+    const objectSize = 1;
     const margin = 0.05;
 
     let radius: number, height: number;
 
-    switch (objectType) {
+    // Sphere
+    radius = 1;
+    threeObject = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, 20, 20),
+      this.createObjectMaterial());
+    shape = new this.ammo.btSphereShape(radius);
+    shape.setMargin(margin);
 
-      case 1:
-        // Sphere
-        radius = 1 + Math.random() * objectSize;
-        threeObject = new THREE.Mesh(
-          new THREE.SphereGeometry(radius, 20, 20),
-          this.createObjectMaterial());
-        shape = new this.ammo.btSphereShape(radius);
-        shape.setMargin(margin);
-        break;
-      case 2:
-        // Box
-        const sx = 1 + Math.random() * objectSize;
-        const sy = 1 + Math.random() * objectSize;
-        const sz = 1 + Math.random() * objectSize;
-        threeObject = new THREE.Mesh(
-          new THREE.BoxGeometry(sx, sy, sz, 1, 1, 1),
-          this.createObjectMaterial());
-        shape = new this.ammo.btBoxShape(
-          new this.ammo.btVector3(sx * 0.5, sy * 0.5, sz * 0.5));
-        shape.setMargin(margin);
-        break;
-      case 3:
-        // Cylinder
-        radius = 1 + Math.random() * objectSize;
-        height = 1 + Math.random() * objectSize;
-        threeObject = new THREE.Mesh(
-          new THREE.CylinderGeometry(radius, radius, height, 20, 1),
-          this.createObjectMaterial());
-        shape = new this.ammo.btCylinderShape(
-          new this.ammo.btVector3(radius, height * 0.5, radius));
-        shape.setMargin(margin);
-        break;
-      default:
-        // Cone
-        radius = 1 + Math.random() * objectSize;
-        height = 2 + Math.random() * objectSize;
-        threeObject = new THREE.Mesh(
-          new THREE.ConeGeometry(radius, height, 20, 2),
-          this.createObjectMaterial());
-        shape = new this.ammo.btConeShape(radius, height);
-        break;
-    }
+    const r = Math.random() * 10;
+    const th = Math.random() * 2 * Math.PI;
 
     threeObject.position.set(
-      (Math.random() - 0.5) * this.terrainWidth * 0.6,
-      this.terrainMaxHeight + objectSize + 2,
-      (Math.random() - 0.5) * this.terrainDepth * 0.6);
+      r * Math.cos(th), 10, r * Math.sin(th));
 
     const mass = objectSize * 5;
     const localInertia = new this.ammo.btVector3(0, 0, 0);
@@ -391,9 +302,13 @@ export class Debug6 {
 
   render() {
     const deltaTime = this.clock.getDelta();
-    if (this.dynamicObjects.length < this.maxNumObjects &&
-      this.time > this.timeNextSpawn) {
-
+    if (this.dynamicObjects.length >= this.maxNumObjects) {
+      for (const o of this.dynamicObjects) {
+        this.scene.remove(o);
+      }
+      this.dynamicObjects.length = 0;
+    }
+    if (this.time > this.timeNextSpawn) {
       this.generateObject();
       this.timeNextSpawn = this.time + this.objectTimePeriod;
     }
