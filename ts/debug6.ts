@@ -92,7 +92,7 @@ export class Debug6 {
     // const controls = new OrbitControls(camera, renderer.domElement);
     // controls.enableZoom = false;
 
-    Model.Load('model/ball.gltf', { singleSided: true }).then((m: Model) => {
+    Model.Load('model/asteroid1.gltf', { singleSided: true }).then((m: Model) => {
       // const geo = new THREE.SphereBufferGeometry(2);
       // geo.scale(10, 1, 10);
       // geo.translate(0, -15, 0);
@@ -101,8 +101,8 @@ export class Debug6 {
       const mesh = m.scene;
       const o = new THREE.Group();
       o.add(mesh);
-      o.position.set(0, -20, 0);
-      o.scale.set(0.2, 0.2, 0.2);
+      o.position.set(0, -40, 0);
+      o.scale.set(30, 30, 30);
       o.rotation.set(0.1, 0, 0);
       console.log(`rotation: ${JSON.stringify(o.rotation)}`);
       this.scene.add(o);
@@ -264,7 +264,7 @@ export class Debug6 {
     const th = Math.random() * 2 * Math.PI;
 
     threeObject.position.set(
-      r * Math.cos(th), 10, r * Math.sin(th));
+      r * Math.cos(th), 20, r * Math.sin(th));
 
     const mass = objectSize * 5;
     const localInertia = new this.ammo.btVector3(0, 0, 0);
