@@ -182,14 +182,9 @@ export class Debug6 {
       while (p != null) {
         let transform = new THREE.Matrix4();
         transform.identity();
-        console.log(p.name);
-        console.log('matrix: ' + JSON.stringify(p.matrix));
         translation.makeTranslation(p.position.x, p.position.y, p.position.z);
-        console.log('translation: ' + JSON.stringify(translation));
         scale.makeScale(p.scale.x, p.scale.y, p.scale.z);
-        console.log('scale: ' + JSON.stringify(scale));
         rotation.makeRotationFromEuler(p.rotation);
-        console.log('rotation: ' + JSON.stringify(rotation) + ' = ' + JSON.stringify(p.rotation));
         transform.multiplyMatrices(transform, translation);
         transform.multiplyMatrices(transform, rotation);
         transform.multiplyMatrices(transform, scale);
@@ -239,7 +234,6 @@ export class Debug6 {
   createShapeFromGeometry(o: THREE.Object3D) {
     console.log('Begin create shape.');
     console.log(`rotation: ${JSON.stringify(o.rotation)}`);
-
     const mesh: AmmoModule.btTriangleMesh = new this.ammo.btTriangleMesh(true, true);
     this.addToShapeFromGeometry(o, mesh);
     console.log('Mesh is filled.');
