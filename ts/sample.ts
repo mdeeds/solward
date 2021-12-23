@@ -18,8 +18,8 @@ export class Sample implements GameEntity {
     this.mesh = new THREE.Mesh(Sample.geometry, Sample.material);
   }
 
-  getObject3D(): THREE.Object3D {
-    return this.mesh;
+  getWorldPosition(position: THREE.Vector3): void {
+    this.mesh.getWorldPosition(position);
   }
 
   removeTag() {

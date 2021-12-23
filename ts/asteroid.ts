@@ -58,14 +58,61 @@ class PCubeAsteroid implements Asteroid {
     this.pCube.bake();
   }
 
-  getObject3D() {
-    return this.group;
+  getWorldPosition(position: THREE.Vector3) {
+    this.group.getWorldPosition(position);
   }
 
   tick(elapsedS: number) {
     if (this.wrapped) {
       this.pCube.tick(elapsedS);
     }
+  }
+}
+
+export class InstancedAsteroid implements Asteroid {
+  private name: string;
+  private class: string = 'instanced';
+  private index: number;
+  constructor(position: THREE.Vector3, private radius: number,
+    private instancedMesh: THREE.InstancedMesh) {
+    const dummy = new THREE.Object3D();
+    dummy.position.copy(position);
+    dummy.scale.set(radius, radius, radius);
+    dummy.updateMatrix();
+    this.index = instancedMesh.count;
+    instancedMesh.count++;
+    instancedMesh.setMatrixAt(this.index, dummy.matrix);
+    this.name = `${instancedMesh.name}-${this.index}`;
+  }
+
+  getName() {
+    return this.name;
+  }
+
+  getClass() {
+    return this.class;
+  }
+
+  removeTag() {
+    // this.container.remove(this.group);
+  }
+
+  tag() {
+    // this.container.add(this.group);
+  }
+
+  getRadius() {
+    return this.radius;
+  }
+
+  getWorldPosition(position: THREE.Vector3) {
+    this.instancedMesh.updateWorldMatrix(false, false);
+    const matrix = new THREE.Matrix4();
+    this.instancedMesh.getMatrixAt(this.index, matrix);
+    position.setFromMatrixPosition(matrix);
+    position.applyMatrix4(this.instancedMesh.matrixWorld);
+  }
+  tick(elapsedS: number) {
   }
 }
 
@@ -80,6 +127,7 @@ export class ModelAsteroid implements Asteroid {
     modelFile: string, private name: string) {
     this.group.position.copy(position);
     this.group.scale.set(radius, radius, radius);
+
     Model.LoadCached(modelFile, new LoadOptions(true)).then((g) => {
       this.group.add(g.scene);
     });
@@ -119,8 +167,8 @@ export class ModelAsteroid implements Asteroid {
     throw new Error('Not implemented');
   }
 
-  getObject3D() {
-    return this.group;
+  getWorldPosition(position: THREE.Vector3) {
+    this.group.getWorldPosition(position);
   }
 
   tick(elapsedS: number) {

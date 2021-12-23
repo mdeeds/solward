@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CSG } from "three-csg-ts";
+// import { CSG } from "three-csg-ts";
 
 import { Asteroid } from "./asteroid";
 import { Model } from "./model";
@@ -36,8 +36,8 @@ export class HomeAsteroid implements Asteroid {
     return 200;
   }
 
-  getObject3D() {
-    return this.group;
+  getWorldPosition(position: THREE.Vector3) {
+    this.group.getWorldPosition(position);
   }
 
   tick(elapsedS: number) {

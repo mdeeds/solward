@@ -130,7 +130,7 @@ export class Fractaline extends THREE.BufferGeometry {
   static fromBufferGeometry(baseGeometry: THREE.BufferGeometry): Fractaline {
     const result = new Fractaline();
     if (!baseGeometry.index) {
-      throw new Error("No index!");
+      baseGeometry = BufferGeometryUtils.mergeVertices(baseGeometry, 0.001);
     }
     const positionAttribute = baseGeometry.getAttribute('position');
     const normalAttribute = baseGeometry.getAttribute('normal');
