@@ -149,7 +149,7 @@ export class VR {
     }
     if (boosted) {
       // each booster can accelerate you at 1G
-      this.boost.multiplyScalar(9.8 * 100 / deltaS);
+      this.boost.multiplyScalar(9.8 * 100);
       this.physics.applyForce(this.boost, this.player);
     }
   }

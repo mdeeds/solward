@@ -54,12 +54,11 @@ export class Physics implements Ticker {
   }
 
   addStaticBody(shape: Ammo.btBvhTriangleMeshShape, transform: THREE.Matrix4) {
+    shape.setMargin(0.1);
     const ammoTransform = new this.ammo.btTransform();
     ammoTransform.setIdentity();
     const position = new THREE.Vector3();
     position.setFromMatrixPosition(transform);
-    const scale = new THREE.Vector3();
-    scale.setFromMatrixScale(transform);
     ammoTransform.setOrigin(new this.ammo.btVector3(
       position.x, position.y, position.z));
     const mass = 0;  // Zero mass tells Ammo that this object does not move.
