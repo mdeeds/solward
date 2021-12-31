@@ -59,7 +59,7 @@ export class Field implements Ticker {
     const home = new HomeAsteroid(system, homePosition);
 
     const num = new URL(document.URL).searchParams.get('n');
-    let numAsteroids = 300;
+    let numAsteroids = 30;
     if (num) {
       numAsteroids = parseInt(num);
     }
@@ -74,7 +74,6 @@ export class Field implements Ticker {
     f.updateGeometry();
     console.log('subdivide done');
 
-    const asteroidShape = this.physics.createShapeFromGeometry(f);
 
     const asteroidMaterial = new THREE.MeshStandardMaterial(
       { color: 0xffffff, metalness: 1, roughness: 0.7 });
@@ -85,7 +84,7 @@ export class Field implements Ticker {
     const dummy = new THREE.Object3D();
     for (let i = 0; i < numAsteroids; ++i) {
       const range = 30000;
-      const r = 5000 / (100 * posRandom.next() + 5);
+      const r = 10000 / (100 * posRandom.next() + 5);
       dummy.position.set(
         (posRandom.next() - 0.5) * range,
         (posRandom.next() - 0.5) * range,
@@ -93,6 +92,10 @@ export class Field implements Ticker {
       dummy.scale.set(r, r, r);
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(i, dummy.matrix);
+      const scale = new THREE.Vector3();
+      scale.setFromMatrixScale(dummy.matrix);
+      const asteroidShape = this.physics.createShapeFromGeometry(f, scale.x);
+      this.physics.addStaticBody(asteroidShape, dummy.matrix)
     }
   }
 

@@ -10,7 +10,7 @@ export class Physics implements Ticker {
 
   private addGeometryToShape(geometry: THREE.BufferGeometry,
     transform: THREE.Matrix4,
-    mesh: Ammo.btTriangleMesh) {
+    mesh: Ammo.btTriangleMesh, scale: number) {
     const positionAttribute = geometry.attributes.position;
     if (!geometry.index) {
       throw new Error("Must have index.");
@@ -24,12 +24,15 @@ export class Physics implements Ticker {
       const a = new THREE.Vector3();
       a.fromBufferAttribute(positionAttribute, vertexAIndex);
       a.applyMatrix4(transform);
+      a.multiplyScalar(scale);
       const b = new THREE.Vector3();
       b.fromBufferAttribute(positionAttribute, vertexBIndex);
       b.applyMatrix4(transform);
+      b.multiplyScalar(scale);
       const c = new THREE.Vector3();
       c.fromBufferAttribute(positionAttribute, vertexCIndex);
       c.applyMatrix4(transform);
+      c.multiplyScalar(scale);
       mesh.addTriangle(
         new this.ammo.btVector3(a.x, a.y, a.z),
         new this.ammo.btVector3(b.x, b.y, b.z),
@@ -41,25 +44,33 @@ export class Physics implements Ticker {
     console.log(`maxX: ${maxX}`);
   }
 
-  createShapeFromGeometry(geometry: THREE.BufferGeometry) {
+  createShapeFromGeometry(geometry: THREE.BufferGeometry, scale: number) {
     const mesh: Ammo.btTriangleMesh = new this.ammo.btTriangleMesh(true, true);
     const transform = new THREE.Matrix4();
     transform.identity();
-    this.addGeometryToShape(geometry, transform, mesh);
+    this.addGeometryToShape(geometry, transform, mesh, scale);
     var shape = new this.ammo.btBvhTriangleMeshShape(mesh, true, true);
     return shape;
   }
 
   addStaticBody(shape: Ammo.btBvhTriangleMeshShape, transform: THREE.Matrix4) {
     const ammoTransform = new this.ammo.btTransform();
-    ammoTransform.setFromOpenGLMatrix(transform.toArray());
+    ammoTransform.setIdentity();
+    const position = new THREE.Vector3();
+    position.setFromMatrixPosition(transform);
+    const scale = new THREE.Vector3();
+    scale.setFromMatrixScale(transform);
+    ammoTransform.setOrigin(new this.ammo.btVector3(
+      position.x, position.y, position.z));
     const mass = 0;  // Zero mass tells Ammo that this object does not move.
     const localInertia = new this.ammo.btVector3(0, 0, 0);
     const motionState = new this.ammo.btDefaultMotionState(ammoTransform);
+    shape.calculateLocalInertia(mass, localInertia);
 
     const body = new this.ammo.btRigidBody(
       new this.ammo.btRigidBodyConstructionInfo(
         mass, motionState, shape, localInertia));
+    body.setLinearVelocity(new this.ammo.btVector3(0, 0, 0));
     console.log(`Add static body ${transform.toArray()}`);
     this.physicsWorld.addRigidBody(body);
   }
