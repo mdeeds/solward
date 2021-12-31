@@ -21,5 +21,5 @@ if (sp.get('debug')) {
 } else if (sp.get('audio')) {
   Audio.make();
 } else {
-  new VR();
+  VR.make();
 }

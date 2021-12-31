@@ -44,8 +44,6 @@ export class Debug6 {
   private dynamicObjects: THREE.Object3D[] = [];
   private transformAux1: AmmoModule.btTransform;
 
-  private ammoHeightData = null;
-
   private time = 0;
   private objectTimePeriod = 0.05;
   private timeNextSpawn = this.time + this.objectTimePeriod;
@@ -134,7 +132,6 @@ export class Debug6 {
   }
 
   initPhysics(terrain: THREE.Object3D) {
-    console.log(`rotation: ${JSON.stringify(terrain.rotation)}`);
     // Physics configuration
     this.collisionConfiguration =
       new this.ammo.btDefaultCollisionConfiguration();
@@ -168,11 +165,43 @@ export class Debug6 {
     this.physicsInitialized = true;
   }
 
+  private addGeometryToShape(geometry: THREE.BufferGeometry,
+    transform: THREE.Matrix4,
+    mesh: AmmoModule.btTriangleMesh) {
+    const positionAttribute = geometry.attributes.position;
+    if (!geometry.index) {
+      throw new Error("Must have index.");
+    }
+    const index = geometry.index;
+    let maxX = 0;
+    for (var i = 0; i < index.count / 3; i++) {
+      const vertexAIndex = index.getX(i * 3);
+      const vertexBIndex = index.getX(i * 3 + 1);
+      const vertexCIndex = index.getX(i * 3 + 2);
+      const a = new THREE.Vector3();
+      a.fromBufferAttribute(positionAttribute, vertexAIndex);
+      a.applyMatrix4(transform);
+      const b = new THREE.Vector3();
+      b.fromBufferAttribute(positionAttribute, vertexBIndex);
+      b.applyMatrix4(transform);
+      const c = new THREE.Vector3();
+      c.fromBufferAttribute(positionAttribute, vertexCIndex);
+      c.applyMatrix4(transform);
+      mesh.addTriangle(
+        new this.ammo.btVector3(a.x, a.y, a.z),
+        new this.ammo.btVector3(b.x, b.y, b.z),
+        new this.ammo.btVector3(c.x, c.y, c.z),
+        false
+      );
+      maxX = Math.max(maxX, a.x, b.x, c.x);
+    }
+    console.log(`maxX: ${maxX}`);
+  }
+
   private addToShapeFromGeometry(o: THREE.Object3D,
     mesh: AmmoModule.btTriangleMesh) {
     console.log(`rotation: ${JSON.stringify(o.rotation)}`);
     if (o instanceof THREE.Mesh) {
-      const geometry: THREE.BufferGeometry = o.geometry;
       let p: THREE.Object3D = o;
       const translation = new THREE.Matrix4();
       const scale = new THREE.Matrix4();
@@ -197,34 +226,8 @@ export class Debug6 {
         transform.multiplyMatrices(transform, transformStack.pop());
       }
       console.log('Total: ' + JSON.stringify(transform));
-      const positionAttribute = geometry.attributes.position;
-      if (!geometry.index) {
-        throw new Error("Must have index.");
-      }
-      const index = geometry.index;
-      let maxX = 0;
-      for (var i = 0; i < index.count / 3; i++) {
-        const vertexAIndex = index.getX(i * 3);
-        const vertexBIndex = index.getX(i * 3 + 1);
-        const vertexCIndex = index.getX(i * 3 + 2);
-        const a = new THREE.Vector3();
-        a.fromBufferAttribute(positionAttribute, vertexAIndex);
-        a.applyMatrix4(transform);
-        const b = new THREE.Vector3();
-        b.fromBufferAttribute(positionAttribute, vertexBIndex);
-        b.applyMatrix4(transform);
-        const c = new THREE.Vector3();
-        c.fromBufferAttribute(positionAttribute, vertexCIndex);
-        c.applyMatrix4(transform);
-        mesh.addTriangle(
-          new this.ammo.btVector3(a.x, a.y, a.z),
-          new this.ammo.btVector3(b.x, b.y, b.z),
-          new this.ammo.btVector3(c.x, c.y, c.z),
-          false
-        );
-        maxX = Math.max(maxX, a.x, b.x, c.x);
-      }
-      console.log(`maxX: ${maxX}`);
+      const geometry: THREE.BufferGeometry = o.geometry;
+      this.addGeometryToShape(geometry, transform, mesh);
     }
     for (const c of o.children) {
       this.addToShapeFromGeometry(c, mesh);
@@ -276,8 +279,11 @@ export class Debug6 {
     const pos = threeObject.position;
     transform.setOrigin(new this.ammo.btVector3(pos.x, pos.y, pos.z));
     const motionState = new this.ammo.btDefaultMotionState(transform);
-    const rbInfo = new this.ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
+    const rbInfo = new this.ammo.btRigidBodyConstructionInfo(
+      mass, motionState, shape, localInertia);
     const body = new this.ammo.btRigidBody(rbInfo);
+    body.setLinearVelocity(new this.ammo.btVector3(
+      r * Math.sin(th), 0, -r * Math.cos(th)));
 
     threeObject.userData.physicsBody = body;
 

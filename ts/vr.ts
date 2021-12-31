@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import Ammo from "ammojs-typed";
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { Hand } from './hand';
 import { Field } from './field';
@@ -9,37 +10,44 @@ import { SimpleText } from "./simpleText";
 import { Ticker } from "./ticker";
 import { SkySphere } from "./skySphere";
 import { Player } from "./player";
+import { Physics } from "./physics";
 
 export class VR {
   private boost = new THREE.Vector3();
   private tmp = new THREE.Vector3();
-  private playerVelocity = new THREE.Vector3(0, 0, 0.001);
+  private physics: Physics;
+  private player: Player;
 
-  constructor() {
+  private constructor(private ammo: typeof Ammo) {
     var renderer = new THREE.WebGLRenderer();
     const camera = new THREE.PerspectiveCamera(
       75, window.innerWidth / window.innerHeight, 0.1,
       SkySphere.kRadius * 1.01);
     const scene = new THREE.Scene();
-    const player = new Player(this.playerVelocity);
+
+    let tickers: Ticker[] = [];
+    this.initPhysics();
+
+    this.player = new Player();
+    this.physics.addKinematicBody(1, this.player);
     const system = new THREE.Group();
 
-    this.setUpRenderer(renderer, scene, player, system);
+    this.setUpRenderer(renderer, scene, this.player, system);
 
-    let views: Ticker[] = [];
     switch (new URL(document.URL).searchParams.get('view')) {
-      case 'cinema': views.push(new Cinema(system, camera)); break;
-      default: views.push(new Field(system, player, scene, camera)); break;
+      case 'cinema': tickers.push(new Cinema(system, camera)); break;
+      default: tickers.push(new Field(system, this.player, scene, camera,
+        this.physics)); break;
     }
 
     const controllers: Hand[] = [];
 
     for (let i = 0; i < 2; ++i) {
-      const h = new Hand(i, renderer, player);
+      const h = new Hand(i, renderer, this.player);
       controllers.push(h);
-      views.push(h);
+      tickers.push(h);
     }
-    player.add(camera);
+    this.player.add(camera);
 
     const clock = new THREE.Clock();
     const gamepads = new Gamepads();
@@ -48,22 +56,36 @@ export class VR {
 
     renderer.setAnimationLoop(() => {
       const deltaS = clock.getDelta();
-      renderer.render(scene, camera);
       this.updateBoost(controllers, deltaS);
-      gamepads.updateRotation(player, renderer, camera);
-      this.tmp.copy(this.playerVelocity);
-      this.tmp.multiplyScalar(deltaS);
-      system.position.sub(this.tmp);
-      for (const view of views) {
+      gamepads.updateRotation(this.player, renderer, camera);
+
+      this.physics.tick(clock.elapsedTime, deltaS);
+
+      const physicsObject: Ammo.btRigidBody = this.player.userData['physicsBody'];
+      const ms = physicsObject.getMotionState();
+      const ammoTransformTmp = new this.ammo.btTransform();
+      ms.getWorldTransform(ammoTransformTmp);
+      const p = ammoTransformTmp.getOrigin();
+      system.position.set(-p.x(), -p.y(), -p.z());
+      renderer.render(scene, camera);
+      for (const view of tickers) {
         view.tick(clock.elapsedTime, deltaS);
       }
 
       // Gamepads.getRightVector(camera, right);
       // t.setText(`right: ${right.x.toFixed(2)} ${right.y.toFixed(2)} ${right.z.toFixed(2)}`);
-      Gamepads.getOutVector(camera, out);
+      // Gamepads.getOutVector(camera, out);
       // t.setText(`out: ${out.x.toFixed(2)} ${out.y.toFixed(2)} ${out.z.toFixed(2)}`);
     });
-    this.addKeyboardHandler(camera, out, right, player);
+    this.addKeyboardHandler(camera, out, right, this.player);
+  }
+
+  static async make(): Promise<VR> {
+    return new Promise<VR>((resolve) => {
+      Ammo().then((lib) => {
+        resolve(new VR(lib));
+      });
+    })
   }
 
   private setUpRenderer(renderer: THREE.WebGLRenderer, scene: THREE.Scene,
@@ -94,15 +116,15 @@ export class VR {
         Gamepads.getOutVector(camera, out);
         Gamepads.getRightVector(camera, right);
         this.tmp.set(0, 0, 0);
-        const dv = 2.0;
+        const impulse = 100 * 9.8;
         switch (ev.code) {
-          case 'KeyU': this.tmp.set(0, 0, dv); break;
+          case 'KeyU': this.tmp.set(0, 0, impulse); break;
           case 'Space':
-          case 'KeyO': this.tmp.set(0, 0, -dv); break;
-          case 'KeyI': this.tmp.set(0, dv, 0); break;
-          case 'KeyK': this.tmp.set(0, -dv, 0); break;
-          case 'KeyJ': this.tmp.set(-dv, 0, 0); break;
-          case 'KeyL': this.tmp.set(dv, 0, 0); break;
+          case 'KeyO': this.tmp.set(0, 0, -impulse); break;
+          case 'KeyI': this.tmp.set(0, impulse, 0); break;
+          case 'KeyK': this.tmp.set(0, -impulse, 0); break;
+          case 'KeyJ': this.tmp.set(-impulse, 0, 0); break;
+          case 'KeyL': this.tmp.set(impulse, 0, 0); break;
           case 'ArrowLeft': player.rotateOnAxis(out, -Math.PI / 32); break;
           case 'ArrowRight': player.rotateOnAxis(out, Math.PI / 32); break;
           case 'ArrowDown': player.rotateOnAxis(right, -Math.PI / 32); break;
@@ -110,20 +132,40 @@ export class VR {
           case 'KeyQ': camera.rotateY(Math.PI / 32); break;
           case 'KeyW': camera.rotateY(-Math.PI / 32); break;
         }
-        this.playerVelocity.add(this.tmp);
+        this.physics.applyForce(this.tmp, player);
       });
   }
 
-  private updateBoost(controllers: Hand[], elapsedS: number) {
+  private updateBoost(controllers: Hand[], deltaS: number) {
     this.boost.set(0, 0, 0);
+    this.tmp.set(0, 0, 1);
+    let boosted = false;
     for (const h of controllers) {
       if (h.isBoosting()) {
         h.copyBoostVector(this.tmp);
         this.boost.add(this.tmp);
+        boosted = true;
       }
     }
-    // each booster can accelerate you at 1G
-    this.boost.multiplyScalar(9.8 * elapsedS);
-    this.playerVelocity.add(this.boost);
+    if (boosted) {
+      // each booster can accelerate you at 1G
+      this.boost.multiplyScalar(9.8 * 100 / deltaS);
+      this.physics.applyForce(this.boost, this.player);
+    }
+  }
+
+  initPhysics() {
+    // Physics configuration
+    const collisionConfiguration =
+      new this.ammo.btDefaultCollisionConfiguration();
+    const dispatcher = new this.ammo.btCollisionDispatcher(
+      collisionConfiguration);
+    const broadphase = new this.ammo.btDbvtBroadphase();
+    const solver = new this.ammo.btSequentialImpulseConstraintSolver();
+    const physicsWorld = new this.ammo.btDiscreteDynamicsWorld(
+      dispatcher, broadphase,
+      solver, collisionConfiguration);
+    physicsWorld.setGravity(new this.ammo.btVector3(0, 0, 0));
+    this.physics = new Physics(physicsWorld, this.ammo);
   }
 }

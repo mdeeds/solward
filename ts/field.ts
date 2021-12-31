@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
+import Ammo from "ammojs-typed";
 import { Random } from "./random";
 import { Ticker } from "./ticker";
 import { Player } from "./player";
@@ -8,12 +9,14 @@ import { SkySphere } from "./skySphere";
 import { Mission, Mission1 } from "./mission";
 import { HomeAsteroid } from "./home";
 import { Fractaline } from "./fractaline";
+import { Physics } from "./physics";
 
 export class Field implements Ticker {
   private mission: Mission;
   constructor(private system: THREE.Group,
     private player: Player,
-    scene: THREE.Scene | THREE.Group, private camera: THREE.Camera) {
+    scene: THREE.Scene | THREE.Group, private camera: THREE.Camera,
+    private physics: Physics) {
 
     this.mission = new Mission1();
     const initialPosition = this.mission.getInitialPlayerPosition();
@@ -71,6 +74,8 @@ export class Field implements Ticker {
     f.updateGeometry();
     console.log('subdivide done');
 
+    const asteroidShape = this.physics.createShapeFromGeometry(f);
+
     const asteroidMaterial = new THREE.MeshStandardMaterial(
       { color: 0xffffff, metalness: 1, roughness: 0.7 });
     const instancedMesh = new THREE.InstancedMesh(
@@ -79,8 +84,8 @@ export class Field implements Ticker {
 
     const dummy = new THREE.Object3D();
     for (let i = 0; i < numAsteroids; ++i) {
-      const range = 8000;
-      const r = 100 * posRandom.next() + 5;
+      const range = 30000;
+      const r = 5000 / (100 * posRandom.next() + 5);
       dummy.position.set(
         (posRandom.next() - 0.5) * range,
         (posRandom.next() - 0.5) * range,

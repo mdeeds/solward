@@ -1,9 +1,11 @@
 import * as THREE from "three";
+import Ammo from "ammojs-typed";
 import { GameEntity } from "./gameEntity";
 import { Removeable } from "./spatialHash";
+import { Physics } from "./physics";
 
 export class Player extends THREE.Group implements Removeable, GameEntity {
-  constructor(readonly velocity: THREE.Vector3) {
+  constructor() {
     super();
   }
 
