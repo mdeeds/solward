@@ -10,13 +10,14 @@ import { Mission, Mission1 } from "./mission";
 import { HomeAsteroid } from "./home";
 import { Fractaline } from "./fractaline";
 import { Physics } from "./physics";
+import { ProximityGroup } from "./proximityGroup";
 
 export class Field implements Ticker {
   private mission: Mission;
   constructor(private system: THREE.Group,
     private player: Player,
     scene: THREE.Scene | THREE.Group, private camera: THREE.Camera,
-    private physics: Physics) {
+    private physics: Physics, private proximityGroup: ProximityGroup) {
 
     this.mission = new Mission1();
     const initialPosition = this.mission.getInitialPlayerPosition();
@@ -96,6 +97,7 @@ export class Field implements Ticker {
       scale.setFromMatrixScale(dummy.matrix);
       const asteroidShape = this.physics.createShapeFromGeometry(f, scale.x);
       this.physics.addStaticBody(asteroidShape, dummy.matrix)
+      this.proximityGroup.insert(instancedMesh, dummy.position);
     }
   }
 

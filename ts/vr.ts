@@ -11,12 +11,14 @@ import { Ticker } from "./ticker";
 import { SkySphere } from "./skySphere";
 import { Player } from "./player";
 import { Physics } from "./physics";
+import { ProximityGroup } from "./proximityGroup";
 
 export class VR {
   private boost = new THREE.Vector3();
   private tmp = new THREE.Vector3();
   private physics: Physics;
   private player: Player;
+  private proximityGroup: ProximityGroup;
 
   private constructor(private ammo: typeof Ammo) {
     var renderer = new THREE.WebGLRenderer();
@@ -31,13 +33,14 @@ export class VR {
     this.player = new Player();
     this.physics.addKinematicBody(1, this.player);
     const system = new THREE.Group();
+    this.proximityGroup = new ProximityGroup(this.player.position);
 
     this.setUpRenderer(renderer, scene, this.player, system);
 
     switch (new URL(document.URL).searchParams.get('view')) {
       case 'cinema': tickers.push(new Cinema(system, camera)); break;
       default: tickers.push(new Field(system, this.player, scene, camera,
-        this.physics)); break;
+        this.physics, this.proximityGroup)); break;
     }
 
     const controllers: Hand[] = [];
@@ -67,6 +70,8 @@ export class VR {
       ms.getWorldTransform(ammoTransformTmp);
       const p = ammoTransformTmp.getOrigin();
       system.position.set(-p.x(), -p.y(), -p.z());
+      this.proximityGroup.setObserverPosition(
+        new THREE.Vector3(p.x(), p.y(), p.z()));
       renderer.render(scene, camera);
       for (const view of tickers) {
         view.tick(clock.elapsedTime, deltaS);
