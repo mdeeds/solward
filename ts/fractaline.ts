@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { BufferAttribute, InstancedBufferAttribute, InterleavedBufferAttribute } from "three";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Random3 } from "./random3";
 
@@ -63,9 +64,27 @@ class Edge {
   }
 }
 
+class UVPoint {
+  constructor(readonly u: number, readonly v: number) { }
+  static midpoint(a: UVPoint, b: UVPoint): UVPoint {
+    if (a.v == 0 || a.v == 1) {
+      return new UVPoint(b.u, (a.v + b.v) / 2);
+    } else if (b.v == 0 || b.v == 1) {
+      return new UVPoint(a.u, (a.v + b.v) / 2);
+    } else {
+      return new UVPoint((a.u + b.u) / 2, (a.v + b.v) / 2);
+    }
+  }
+  static fromAttribute(att: BufferAttribute | InterleavedBufferAttribute,
+    i: number): UVPoint {
+    return new UVPoint(att.getX(i), att.getY(i));
+  }
+}
+
 class Triangle {
   constructor(readonly ab: Edge, readonly bc: Edge, readonly ca: Edge,
-    readonly a: Vertex, readonly b: Vertex, readonly c: Vertex) {
+    readonly a: Vertex, readonly b: Vertex, readonly c: Vertex,
+    readonly auv: UVPoint, readonly buv: UVPoint, readonly cuv: UVPoint) {
   }
 
   area(): number {
@@ -85,6 +104,9 @@ class Triangle {
     const abVertex = this.ab.getMidpoint(random);
     const bcVertex = this.bc.getMidpoint(random);
     const caVertex = this.ca.getMidpoint(random);
+    const abUV = UVPoint.midpoint(this.auv, this.buv);
+    const bcUV = UVPoint.midpoint(this.buv, this.cuv);
+    const caUV = UVPoint.midpoint(this.cuv, this.auv);
 
     const aEdge = new Edge(
       this.ab.getMidpoint(random), this.ca.getMidpoint(random));
@@ -94,25 +116,30 @@ class Triangle {
       this.bc.getMidpoint(random), this.ca.getMidpoint(random));
 
     result.push(
-      new Triangle(aEdge, bEdge, cEdge, caVertex, abVertex, bcVertex));
+      new Triangle(aEdge, bEdge, cEdge,
+        caVertex, abVertex, bcVertex,
+        caUV, abUV, bcUV));
     result.push(
       new Triangle(
         this.ab.getChild(this.a, random),
         aEdge,
         this.ca.getChild(this.a, random),
-        this.a, abVertex, caVertex));
+        this.a, abVertex, caVertex,
+        this.auv, abUV, caUV));
     result.push(
       new Triangle(
         this.ab.getChild(this.b, random),
         this.bc.getChild(this.b, random),
         bEdge,
-        abVertex, this.b, bcVertex));
+        abVertex, this.b, bcVertex,
+        abUV, this.buv, bcUV));
     result.push(
       new Triangle(
         cEdge,
         this.bc.getChild(this.c, random),
         this.ca.getChild(this.c, random),
-        caVertex, bcVertex, this.c));
+        caVertex, bcVertex, this.c,
+        caUV, bcUV, this.cuv));
 
     return result;
   }
@@ -129,14 +156,21 @@ export class Fractaline extends THREE.BufferGeometry {
 
   static fromBufferGeometry(baseGeometry: THREE.BufferGeometry): Fractaline {
     const result = new Fractaline();
+    baseGeometry.computeVertexNormals();
     if (!baseGeometry.index) {
       baseGeometry = BufferGeometryUtils.mergeVertices(baseGeometry, 0.001);
     }
+    console.log(`Index size: ${baseGeometry.index.count}`);
     const positionAttribute = baseGeometry.getAttribute('position');
     const normalAttribute = baseGeometry.getAttribute('normal');
+    const uvAttribute = baseGeometry.getAttribute('uv');
     if (positionAttribute.count != normalAttribute.count) {
       throw new Error("Normal and Postions don't match");
     }
+    if (positionAttribute.count != uvAttribute.count) {
+      throw new Error("UV and Postions don't match");
+    }
+
     for (let i = 0; i < positionAttribute.count; ++i) {
       result.baseVertices.push(Vertex.fromAttributes(i,
         positionAttribute, normalAttribute));
@@ -151,7 +185,11 @@ export class Fractaline extends THREE.BufferGeometry {
       const caEdge = result.findOrMakeBaseEdge(cIndex, aIndex);
       const tri = new Triangle(abEdge, bcEdge, caEdge,
         result.baseVertices[aIndex], result.baseVertices[bIndex],
-        result.baseVertices[cIndex]);
+        result.baseVertices[cIndex],
+        UVPoint.fromAttribute(uvAttribute, aIndex),
+        UVPoint.fromAttribute(uvAttribute, bIndex),
+        UVPoint.fromAttribute(uvAttribute, cIndex),
+      );
       result.triangles.push(tri);
     }
     result.updateGeometry();
@@ -195,12 +233,16 @@ export class Fractaline extends THREE.BufferGeometry {
     const positions: number[] = [];
     const normals: number[] = [];
     const index: number[] = [];
+    const uvs: number[] = [];
 
     const vertexToIndex = new Map<Vertex, number>();
     for (const tri of this.triangles) {
-      const aIndex = this.getOrSetIndex(tri.a, vertexToIndex, positions, normals);
-      const bIndex = this.getOrSetIndex(tri.b, vertexToIndex, positions, normals);
-      const cIndex = this.getOrSetIndex(tri.c, vertexToIndex, positions, normals);
+      const aIndex = this.getOrSetIndex(
+        tri.a, tri.auv, vertexToIndex, positions, normals, uvs);
+      const bIndex = this.getOrSetIndex(
+        tri.b, tri.buv, vertexToIndex, positions, normals, uvs);
+      const cIndex = this.getOrSetIndex(
+        tri.c, tri.cuv, vertexToIndex, positions, normals, uvs);
       index.push(aIndex, bIndex, cIndex);
     }
 
@@ -208,18 +250,22 @@ export class Fractaline extends THREE.BufferGeometry {
       new THREE.BufferAttribute(new Float32Array(positions), 3, false));
     this.setAttribute('normal',
       new THREE.BufferAttribute(new Float32Array(normals), 3, false));
+    this.setAttribute('uv',
+      new THREE.BufferAttribute(new Float32Array(uvs), 2, false));
     this.setIndex(index);
     this.computeVertexNormals();
     this.getAttribute('position').needsUpdate = true;
     this.getAttribute('normal').needsUpdate = true;
+    this.getAttribute('uv').needsUpdate = true;
   }
 
-  private getOrSetIndex(v: Vertex, m: Map<Vertex, number>,
-    positions: number[], normals: number[]): number {
+  private getOrSetIndex(v: Vertex, uv: UVPoint, m: Map<Vertex, number>,
+    positions: number[], normals: number[], uvs: number[]): number {
     if (!m.has(v)) {
       m.set(v, m.size);
       positions.push(v.p.x, v.p.y, v.p.z);
       normals.push(v.n.x, v.n.y, v.n.z);
+      uvs.push(uv.u, uv.v);
     }
     return m.get(v);
   }
