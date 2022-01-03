@@ -95,10 +95,11 @@ export class Field implements Ticker {
       this.physics.addStaticBody(asteroidShape, dummy.matrix);
       this.proximityGroup.insert(instancedMesh, dummy.position);
     }
+    this.buildLandingDisc();
     this.buildHome();
   }
 
-  async buildHome() {
+  private async buildHome() {
     const home = await Model.Load('model/asteroid4-collider.gltf',
       { singleSided: true });
     home.scene.updateMatrix();
@@ -109,6 +110,32 @@ export class Field implements Ticker {
     home.scene.updateMatrix();
     this.physics.addStaticBody(homeShape, home.scene.matrix);
     this.proximityGroup.insert(home.scene, home.scene.position);
+  }
+
+  private buildLandingDisc() {
+    const geometry = new THREE.IcosahedronBufferGeometry(5, 3);
+    const color = new THREE.Color(0x8080ff);
+    const material = new THREE.MeshBasicMaterial({ color: color });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(10000, 10000, 10000);
+    this.system.add(mesh);
+    this.physics.addProjectionCallback(
+      (distance: number, intersection: THREE.Vector3, etaS: number) => {
+        mesh.position.copy(intersection);
+        const velocity = distance / etaS;
+        const deceleration = velocity / etaS;
+        if (deceleration > 2 * 9.8) {
+          color.setHex(0xff0000);
+        } else if (deceleration > 9.8) {
+          color.setHex(0xffff00);
+        } else {
+          color.setHex(0x8080ff);
+        }
+        if (material.color.getHex() != color.getHex()) {
+          material.color = color;
+          material.needsUpdate = true;
+        };
+      });
   }
 
   tick(elapsedS: number, deltaS: number) {

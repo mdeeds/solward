@@ -2,10 +2,18 @@ import * as THREE from "three";
 import Ammo from "ammojs-typed";
 import { Ticker } from "./ticker";
 
+export type ProjectionCallback =
+  (distance: number, intersection: THREE.Vector3, etaS: number) => void;
+
 export class Physics implements Ticker {
   private movingObjects: THREE.Object3D[] = [];
+  private projectionCallbacks: ProjectionCallback[] = [];
   public constructor(private physicsWorld: Ammo.btDiscreteDynamicsWorld,
     private ammo: typeof Ammo) {
+  }
+
+  addProjectionCallback(cb: ProjectionCallback) {
+    this.projectionCallbacks.push(cb);
   }
 
   private addGeometryToShape(geometry: THREE.BufferGeometry,
@@ -158,12 +166,40 @@ export class Physics implements Ticker {
     this.physicsWorld.addRigidBody(body);
   }
 
+  private rayTest(physicsObject: Ammo.btRigidBody) {
+    const from = physicsObject.getWorldTransform().getOrigin();
+    const to = new this.ammo.btVector3(0, 0, 0);
+    const v = physicsObject.getLinearVelocity();
+    const mps = v.length();
+    let forward = new this.ammo.btVector3(v.x(), v.y(), v.z());
+    forward.normalize();
+    forward = forward.op_mul(1000);
+    to.setValue(from.x(), from.y(), from.z());
+    to.op_add(forward);
+
+    const closestRayResultCallback = new this.ammo.ClosestRayResultCallback(
+      from, to);
+    this.physicsWorld.rayTest(from, to, closestRayResultCallback);
+    const btIntersection = closestRayResultCallback.get_m_hitPointWorld();
+    const intersection = new THREE.Vector3(
+      btIntersection.x(), btIntersection.y(), btIntersection.z());
+    const distanceM = btIntersection.length();
+    const etaS = distanceM / mps;
+    for (const cb of this.projectionCallbacks) {
+      cb(distanceM, intersection, etaS);
+    }
+    if (closestRayResultCallback.hasHit()) {
+      console.log(`Range: ${closestRayResultCallback.get_m_closestHitFraction() * 1000}`);
+    }
+  }
+
   tick(elapsedS: number, deltaS: number) {
     if (deltaS === 0) {
       return;
     }
     const ammoTransformTmp = new this.ammo.btTransform();
     this.physicsWorld.stepSimulation(deltaS, 10);
+
     let colliding = false;
     if (this.physicsWorld.getPairCache().getNumOverlappingPairs() > 0) {
       colliding = true;
@@ -172,6 +208,7 @@ export class Physics implements Ticker {
       const physicsObject: Ammo.btRigidBody = o.userData['physicsBody'];
       const ms = physicsObject.getMotionState();
       if (ms) {
+        this.rayTest(physicsObject);
         ms.getWorldTransform(ammoTransformTmp);
         const p = ammoTransformTmp.getOrigin();
         const q = ammoTransformTmp.getRotation();
@@ -185,7 +222,6 @@ export class Physics implements Ticker {
             physicsObject.setLinearVelocity(velocity);
           }
         }
-        physicsObject.getLinearVelocity()
         // console.log(`Position: ${p.x()}, ${p.y()}, ${p.z()}`);
         // o.position.set(p.x(), p.y(), p.z());
         // o.quaternion.set(q.x(), q.y(), q.z(), q.w());
