@@ -101,11 +101,12 @@ export class Field implements Ticker {
   async buildHome() {
     const home = await Model.Load('model/asteroid4-collider.gltf',
       { singleSided: true });
-
-    home.scene.position.set(0, -200, 160);
     home.scene.updateMatrix();
+
     this.system.add(home.scene);
     const homeShape = this.physics.createShapeFromObject(home.scene);
+    home.scene.position.set(0, -200, 160);
+    home.scene.updateMatrix();
     this.physics.addStaticBody(homeShape, home.scene.matrix);
     this.proximityGroup.insert(home.scene, home.scene.position);
   }
