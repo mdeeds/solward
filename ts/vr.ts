@@ -31,7 +31,7 @@ export class VR {
     this.initPhysics();
 
     this.player = new Player();
-    this.physics.addKinematicBody(1, this.player);
+    this.physics.addMovingBody(1, this.player);
     const system = new THREE.Group();
     this.proximityGroup = new ProximityGroup(this.player.position);
 

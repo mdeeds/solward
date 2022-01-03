@@ -93,9 +93,7 @@ export class Field implements Ticker {
       dummy.scale.set(r, r, r);
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(i, dummy.matrix);
-      const scale = new THREE.Vector3();
-      scale.setFromMatrixScale(dummy.matrix);
-      const asteroidShape = this.physics.createShapeFromGeometry(f, scale.x);
+      const asteroidShape = this.physics.createShapeFromGeometry(f);
       this.physics.addStaticBody(asteroidShape, dummy.matrix)
       this.proximityGroup.insert(instancedMesh, dummy.position);
     }
