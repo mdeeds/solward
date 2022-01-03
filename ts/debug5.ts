@@ -11,7 +11,7 @@ export class Debug5 {
     var renderer = new THREE.WebGLRenderer();
     renderer.shadowMap.enabled = true;
     const camera = new THREE.PerspectiveCamera(
-      5, 1.0, 0.1, 3000);
+      3, 1.0, 0.1, 3000);
     camera.position.set(0, 0, 0);
     renderer.setSize(800, 800);
     body.appendChild(renderer.domElement);
@@ -36,9 +36,18 @@ export class Debug5 {
         ballMesh = m.getMesh('Sphere');
         ballMesh.position.set(0, 0, -100);
         const f = Fractaline.fromBufferGeometry(ballMesh.geometry);
-        f.subdivide(null, 0.01);
+        f.subdivide(null, 0.001);
+        f.subdivide(null, 0.001);
+        f.subdivide(null, 0.001);
+        f.subdivide(null, 0.001);
         f.updateGeometry();
         ballMesh.geometry = f;
+        if (sp.get('wireframe')) {
+          ballMesh.material = new THREE.MeshBasicMaterial({
+            color: 0xe0e0ff,
+            wireframe: true
+          });
+        }
         scene.add(ballMesh);
       });
 

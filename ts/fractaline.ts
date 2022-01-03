@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BufferAttribute, InstancedBufferAttribute, InterleavedBufferAttribute } from "three";
+import { BufferAttribute, InterleavedBufferAttribute } from "three";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Random3 } from "./random3";
 
@@ -33,7 +33,7 @@ class Edge {
     v.copy(this.v1.p);
     v.sub(this.v2.p);
     const length = v.length();
-    out.multiplyScalar(0.3 * length * (Math.random() - 0.5));
+    out.multiplyScalar(0.6 * length * (Math.random() - 0.5));
     mid.add(out);
     const n = new THREE.Vector3();
     n.lerpVectors(this.v1.n, this.v2.n, 0.5);
@@ -146,21 +146,82 @@ class Triangle {
 }
 
 export class Fractaline extends THREE.BufferGeometry {
-  private baseVertices: Vertex[] = [];
-  private baseEdgeIndex = new Map<string, Edge>();
   private triangles: Triangle[] = [];
 
   constructor() {
     super();
   }
 
+  private static zigZag(x: number): number {
+    if (x >= 0) {
+      return x * 2;
+    } else {
+      return -x * 2 + 1;
+    }
+  }
+
+  static xyzKey(x: number, y: number, z: number): number {
+    let xInt = Fractaline.zigZag(Math.round(x * 100));
+    let yInt = Fractaline.zigZag(Math.round(y * 100));
+    let zInt = Fractaline.zigZag(Math.round(z * 100));
+
+    const biggest = Math.max(xInt, yInt, zInt);
+    let inBit = 1;
+    let outBit = 1;
+    let result = 0;
+    while (inBit <= biggest) {
+      if (inBit & zInt) {
+        result |= outBit;
+      }
+      outBit = outBit << 1;
+      if (inBit & yInt) {
+        result |= outBit;
+      }
+      outBit = outBit << 1;
+      if (inBit & xInt) {
+        result |= outBit;
+      }
+      outBit = outBit = outBit << 1;
+      inBit = inBit << 1;
+    }
+    return result;
+  }
+
+  static xyzKeyFromAttribute(i: number,
+    positionAttribute: BufferAttribute | InterleavedBufferAttribute): number {
+    const key = this.xyzKey(positionAttribute.getX(i),
+      positionAttribute.getY(i), positionAttribute.getZ(i));
+    return key;
+  }
+
+  static vuvKey(v: Vertex, uv: UVPoint): string {
+    const vKey = this.xyzKey(v.p.x, v.p.y, v.p.z);
+    const uvKey = this.xyzKey(uv.u, uv.v, 0);
+    return `${vKey}:${uvKey}`;
+  }
+
+  static findOrAddVertex(
+    i: number,
+    positionAttribute: BufferAttribute | InterleavedBufferAttribute,
+    normalAttribute: BufferAttribute | InterleavedBufferAttribute,
+    baseVertices: Map<number, Vertex>): Vertex {
+    const key = this.xyzKeyFromAttribute(i, positionAttribute);
+    if (!baseVertices.has(key)) {
+      const v = Vertex.fromAttributes(i,
+        positionAttribute, normalAttribute);
+      baseVertices.set(key, v);
+    }
+    return baseVertices.get(key);
+  }
+
   static fromBufferGeometry(baseGeometry: THREE.BufferGeometry): Fractaline {
+    const baseVertices = new Map<number, Vertex>();
+    const baseEdgeIndex = new Map<string, Edge>();
+
     const result = new Fractaline();
-    baseGeometry.computeVertexNormals();
     if (!baseGeometry.index) {
       baseGeometry = BufferGeometryUtils.mergeVertices(baseGeometry, 0.001);
     }
-    console.log(`Index size: ${baseGeometry.index.count}`);
     const positionAttribute = baseGeometry.getAttribute('position');
     const normalAttribute = baseGeometry.getAttribute('normal');
     const uvAttribute = baseGeometry.getAttribute('uv');
@@ -170,28 +231,34 @@ export class Fractaline extends THREE.BufferGeometry {
     if (positionAttribute.count != uvAttribute.count) {
       throw new Error("UV and Postions don't match");
     }
-
     for (let i = 0; i < positionAttribute.count; ++i) {
-      result.baseVertices.push(Vertex.fromAttributes(i,
-        positionAttribute, normalAttribute));
+      this.findOrAddVertex(i, positionAttribute, normalAttribute, baseVertices);
     }
     const index = baseGeometry.index;
     for (let i = 0; i < index.count; i += 3) {
       const aIndex = index.getX(i);
       const bIndex = index.getX(i + 1);
       const cIndex = index.getX(i + 2);
-      const abEdge = result.findOrMakeBaseEdge(aIndex, bIndex);
-      const bcEdge = result.findOrMakeBaseEdge(bIndex, cIndex);
-      const caEdge = result.findOrMakeBaseEdge(cIndex, aIndex);
+      const aKey = this.xyzKeyFromAttribute(aIndex, positionAttribute);
+      const bKey = this.xyzKeyFromAttribute(bIndex, positionAttribute);
+      const cKey = this.xyzKeyFromAttribute(cIndex, positionAttribute);
+
+      const abEdge = result.findOrMakeBaseEdge(
+        aKey, bKey, baseEdgeIndex, baseVertices);
+      const bcEdge = result.findOrMakeBaseEdge(
+        bKey, cKey, baseEdgeIndex, baseVertices);
+      const caEdge = result.findOrMakeBaseEdge(
+        cKey, aKey, baseEdgeIndex, baseVertices);
       const tri = new Triangle(abEdge, bcEdge, caEdge,
-        result.baseVertices[aIndex], result.baseVertices[bIndex],
-        result.baseVertices[cIndex],
+        baseVertices.get(aKey), baseVertices.get(bKey),
+        baseVertices.get(cKey),
         UVPoint.fromAttribute(uvAttribute, aIndex),
         UVPoint.fromAttribute(uvAttribute, bIndex),
         UVPoint.fromAttribute(uvAttribute, cIndex),
       );
       result.triangles.push(tri);
     }
+
     result.updateGeometry();
     return result;
   }
@@ -226,7 +293,6 @@ export class Fractaline extends THREE.BufferGeometry {
       }
     }
     this.triangles = newTriangles;
-
   }
 
   updateGeometry(): void {
@@ -235,14 +301,14 @@ export class Fractaline extends THREE.BufferGeometry {
     const index: number[] = [];
     const uvs: number[] = [];
 
-    const vertexToIndex = new Map<Vertex, number>();
+    const vuvToIndex = new Map<string, number>();
     for (const tri of this.triangles) {
       const aIndex = this.getOrSetIndex(
-        tri.a, tri.auv, vertexToIndex, positions, normals, uvs);
+        tri.a, tri.auv, vuvToIndex, positions, normals, uvs);
       const bIndex = this.getOrSetIndex(
-        tri.b, tri.buv, vertexToIndex, positions, normals, uvs);
+        tri.b, tri.buv, vuvToIndex, positions, normals, uvs);
       const cIndex = this.getOrSetIndex(
-        tri.c, tri.cuv, vertexToIndex, positions, normals, uvs);
+        tri.c, tri.cuv, vuvToIndex, positions, normals, uvs);
       index.push(aIndex, bIndex, cIndex);
     }
 
@@ -259,24 +325,28 @@ export class Fractaline extends THREE.BufferGeometry {
     this.getAttribute('uv').needsUpdate = true;
   }
 
-  private getOrSetIndex(v: Vertex, uv: UVPoint, m: Map<Vertex, number>,
+  private getOrSetIndex(v: Vertex, uv: UVPoint, m: Map<string, number>,
     positions: number[], normals: number[], uvs: number[]): number {
-    if (!m.has(v)) {
-      m.set(v, m.size);
+    const key: string = Fractaline.vuvKey(v, uv);
+    if (!m.has(key)) {
+      m.set(key, m.size);
       positions.push(v.p.x, v.p.y, v.p.z);
       normals.push(v.n.x, v.n.y, v.n.z);
       uvs.push(uv.u, uv.v);
     }
-    return m.get(v);
+    return m.get(key);
   }
 
-  private findOrMakeBaseEdge(i1: number, i2: number) {
-    const key = i1 < i2 ? `${i1}.${i2}` : `${i2}.${i1}`;
-    if (!this.baseEdgeIndex.has(key)) {
-      const edge = new Edge(this.baseVertices[i1], this.baseVertices[i2]);
-      this.baseEdgeIndex.set(key, edge);
+  private findOrMakeBaseEdge(key1: number, key2: number,
+    baseEdgeIndex: Map<string, Edge>,
+    baseVertices: Map<number, Vertex>) {
+    const key = key1 < key2 ? `${key1}.${key2}` : `${key2}.${key1}`;
+    if (!baseEdgeIndex.has(key)) {
+      const edge = new Edge(baseVertices.get(key1), baseVertices.get(key2));
+      baseEdgeIndex.set(key, edge);
+    } else {
     }
-    return this.baseEdgeIndex.get(key);
+    return baseEdgeIndex.get(key);
   }
 
   private static fromGroupHelper(o: THREE.Object3D, geometries: THREE.BufferGeometry[]) {
