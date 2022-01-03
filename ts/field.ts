@@ -11,6 +11,7 @@ import { HomeAsteroid } from "./home";
 import { Fractaline } from "./fractaline";
 import { Physics } from "./physics";
 import { ProximityGroup } from "./proximityGroup";
+import { Model } from "./model";
 
 export class Field implements Ticker {
   private mission: Mission;
@@ -56,9 +57,6 @@ export class Field implements Ticker {
 
     const posRandom = new Random('positions');
 
-    const homePosition = new THREE.Vector3(0, 0, 160);
-    const home = new HomeAsteroid(system, homePosition);
-
     const num = new URL(document.URL).searchParams.get('n');
     let numAsteroids = 30;
     if (num) {
@@ -94,9 +92,22 @@ export class Field implements Ticker {
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(i, dummy.matrix);
       const asteroidShape = this.physics.createShapeFromGeometry(f);
-      this.physics.addStaticBody(asteroidShape, dummy.matrix)
+      this.physics.addStaticBody(asteroidShape, dummy.matrix);
       this.proximityGroup.insert(instancedMesh, dummy.position);
     }
+    this.buildHome();
+  }
+
+  async buildHome() {
+    const home = await Model.Load('model/asteroid4-collider.gltf',
+      { singleSided: true });
+
+    home.scene.position.set(0, -200, 160);
+    home.scene.updateMatrix();
+    this.system.add(home.scene);
+    const homeShape = this.physics.createShapeFromObject(home.scene);
+    this.physics.addStaticBody(homeShape, home.scene.matrix);
+    this.proximityGroup.insert(home.scene, home.scene.position);
   }
 
   tick(elapsedS: number, deltaS: number) {

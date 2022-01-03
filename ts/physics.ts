@@ -59,6 +59,49 @@ export class Physics implements Ticker {
     return mesh;
   }
 
+  private addToShapeFromObject(o: THREE.Object3D,
+    mesh: Ammo.btTriangleMesh) {
+    console.log(`rotation: ${JSON.stringify(o.rotation)}`);
+    if (o instanceof THREE.Mesh) {
+      let p: THREE.Object3D = o;
+      const translation = new THREE.Matrix4();
+      const scale = new THREE.Matrix4();
+      const rotation = new THREE.Matrix4();
+      console.log('Applying transformations');
+      const transformStack: THREE.Matrix4[] = [];
+      while (p != null) {
+        let transform = new THREE.Matrix4();
+        transform.identity();
+        translation.makeTranslation(p.position.x, p.position.y, p.position.z);
+        scale.makeScale(p.scale.x, p.scale.y, p.scale.z);
+        rotation.makeRotationFromEuler(p.rotation);
+        transform.multiplyMatrices(transform, translation);
+        transform.multiplyMatrices(transform, rotation);
+        transform.multiplyMatrices(transform, scale);
+        transformStack.push(transform);
+        p = p.parent;
+      }
+      let transform = new THREE.Matrix4();
+      transform.identity();
+      while (transformStack.length > 0) {
+        transform.multiplyMatrices(transform, transformStack.pop());
+      }
+      console.log('Total: ' + JSON.stringify(transform));
+      const geometry: THREE.BufferGeometry = o.geometry;
+      this.addGeometryToShape(geometry, transform, mesh);
+    }
+    for (const c of o.children) {
+      this.addToShapeFromObject(c, mesh);
+    }
+  }
+
+  createShapeFromObject(object: THREE.Object3D)
+    : Ammo.btTriangleMesh {
+    const mesh: Ammo.btTriangleMesh = new this.ammo.btTriangleMesh(true, true);
+    this.addToShapeFromObject(object, mesh);
+    return mesh;
+  }
+
   addStaticBody(mesh: Ammo.btTriangleMesh, transform: THREE.Matrix4) {
     const shape = new this.ammo.btBvhTriangleMeshShape(mesh, true, true);
     const ammoTransform = new this.ammo.btTransform();
