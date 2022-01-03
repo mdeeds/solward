@@ -67,6 +67,9 @@ class Edge {
 class UVPoint {
   constructor(readonly u: number, readonly v: number) { }
   static midpoint(a: UVPoint, b: UVPoint): UVPoint {
+    return new UVPoint((a.u + b.u) / 2, (a.v + b.v) / 2);
+  }
+  static skySphereMidpoint(a: UVPoint, b: UVPoint): UVPoint {
     if (a.v == 0 || a.v == 1) {
       return new UVPoint(b.u, (a.v + b.v) / 2);
     } else if (b.v == 0 || b.v == 1) {
