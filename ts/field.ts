@@ -124,8 +124,12 @@ export class Field implements Ticker {
         mesh.position.copy(intersection);
         const velocity = distance / etaS;
         const deceleration = velocity / etaS;
-        if (deceleration > 2 * 9.8) {
-          color.setHex(0xff0000);
+        if (etaS < (1 / 10) && velocity > 15) {
+          console.log(`FATAL in ${etaS} @ ${velocity}`);
+        } else if (velocity < 5) {
+          color.setHex(0x00ff00);
+        } else if (deceleration > 2 * 9.8) {
+          color.setHex(0xff8000);
         } else if (deceleration > 9.8) {
           color.setHex(0xffff00);
         } else {

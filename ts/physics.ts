@@ -171,9 +171,10 @@ export class Physics implements Ticker {
     const to = new this.ammo.btVector3(0, 0, 0);
     const v = physicsObject.getLinearVelocity();
     const mps = v.length();
+    if (mps <= 0) { return; }
     let forward = new this.ammo.btVector3(v.x(), v.y(), v.z());
     forward.normalize();
-    forward = forward.op_mul(1000);
+    forward = forward.op_mul(10000);
     to.setValue(from.x(), from.y(), from.z());
     to.op_add(forward);
 
@@ -183,13 +184,13 @@ export class Physics implements Ticker {
     const btIntersection = closestRayResultCallback.get_m_hitPointWorld();
     const intersection = new THREE.Vector3(
       btIntersection.x(), btIntersection.y(), btIntersection.z());
+    btIntersection.op_sub(from);
     const distanceM = btIntersection.length();
     const etaS = distanceM / mps;
-    for (const cb of this.projectionCallbacks) {
-      cb(distanceM, intersection, etaS);
-    }
     if (closestRayResultCallback.hasHit()) {
-      console.log(`Range: ${closestRayResultCallback.get_m_closestHitFraction() * 1000}`);
+      for (const cb of this.projectionCallbacks) {
+        cb(distanceM, intersection, etaS);
+      }
     }
   }
 
@@ -209,22 +210,6 @@ export class Physics implements Ticker {
       const ms = physicsObject.getMotionState();
       if (ms) {
         this.rayTest(physicsObject);
-        ms.getWorldTransform(ammoTransformTmp);
-        const p = ammoTransformTmp.getOrigin();
-        const q = ammoTransformTmp.getRotation();
-        if (colliding) {
-          let velocity = physicsObject.getLinearVelocity();
-          const speed = velocity.length();
-          // console.log(`Speed: ${speed} m/s`);
-          if (speed > 10.0) {
-            // TODO: Damage or death here.
-            velocity = velocity.op_mul(0.95);
-            physicsObject.setLinearVelocity(velocity);
-          }
-        }
-        // console.log(`Position: ${p.x()}, ${p.y()}, ${p.z()}`);
-        // o.position.set(p.x(), p.y(), p.z());
-        // o.quaternion.set(q.x(), q.y(), q.z(), q.w());
       }
     }
   }
