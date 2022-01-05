@@ -1,13 +1,11 @@
 import * as THREE from "three";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-import Ammo from "ammojs-typed";
 import { Random } from "./random";
 import { Ticker } from "./ticker";
 import { Player } from "./player";
 import { SkySphere } from "./skySphere";
 import { Mission, Mission1 } from "./mission";
-import { HomeAsteroid } from "./home";
 import { Fractaline } from "./fractaline";
 import { Physics } from "./physics";
 import { ProximityGroup } from "./proximityGroup";
@@ -24,7 +22,10 @@ export class Field implements Ticker {
     const initialPosition = this.mission.getInitialPlayerPosition();
     initialPosition.multiplyScalar(-1);
     this.system.position.copy(initialPosition);
+    this.system.updateMatrix();
     this.player.rotation.copy(this.mission.getInitialRotation());
+    this.player.updateMatrix();
+    this.physics.addMovingBody(1, this.player, system);
 
     const light = new THREE.DirectionalLight(0xffffff, 1.0);
     light.position.set(0, SkySphere.kRadius / 2, 0);
@@ -70,9 +71,9 @@ export class Field implements Ticker {
 
     const f = Fractaline.fromBufferGeometry(asteroidGeometry);
     f.subdivide(null, 0);
+    f.subdivide(null, 0);
     f.updateGeometry();
     console.log('subdivide done');
-
 
     const asteroidMaterial = new THREE.MeshStandardMaterial(
       { color: 0xffffff, metalness: 1, roughness: 0.7 });
@@ -82,12 +83,13 @@ export class Field implements Ticker {
 
     const dummy = new THREE.Object3D();
     for (let i = 0; i < numAsteroids; ++i) {
-      const range = 30000;
-      const r = 10000 / (100 * posRandom.next() + 5);
+      const range = 100000;
+      const r = 30000 / (100 * posRandom.next() + 5);
       dummy.position.set(
         (posRandom.next() - 0.5) * range,
         (posRandom.next() - 0.5) * range,
         (posRandom.next() - 0.5) * range);
+      dummy.position.add(system.position);
       dummy.scale.set(r, r, r);
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(i, dummy.matrix);
@@ -104,10 +106,19 @@ export class Field implements Ticker {
       { singleSided: true });
     home.scene.updateMatrix();
 
-    this.system.add(home.scene);
+    console.log(`System position: ${this.system.position.y} : -200`);
+
     const homeShape = this.physics.createShapeFromObject(home.scene);
     home.scene.position.set(0, -200, 160);
     home.scene.updateMatrix();
+    this.system.add(home.scene);
+    const worldPosition = new THREE.Vector3();
+    home.scene.getWorldPosition(worldPosition);
+    console.log(`World position: ${worldPosition.y} : -400`);
+
+    const transform = new THREE.Matrix4();
+    transform.copy(home.scene.matrix);
+    transform.multiply(this.system.matrix);
     this.physics.addStaticBody(homeShape, home.scene.matrix);
     this.proximityGroup.insert(home.scene, home.scene.position);
   }

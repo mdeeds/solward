@@ -12,7 +12,7 @@ export class Mission1 implements Mission {
   getInitialPlayerPosition(): THREE.Vector3 {
     // // A-230
     // return new THREE.Vector3(-2059 + 125, 1128, -1306);
-    return new THREE.Vector3(0, 0, 0);
+    return new THREE.Vector3(-4000, 2250, -2612);
   }
 
   getInitialRotation(): THREE.Euler {

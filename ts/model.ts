@@ -47,20 +47,20 @@ export class Model {
     return new Promise((resolve, reject) => {
       const loader = new GLTFLoader();
       loader.load(url, function (gltf) {
-        console.log(`Loaded: ${url}`);
+        // console.log(`Loaded: ${url}`);
         gltf.scene.traverse((o) => {
 
           if (o instanceof THREE.Mesh) {
-            console.log(` ${o.name}: M`);
+            // console.log(` ${o.name}: M`);
             if (options.singleSided != null && options.singleSided &&
               o.material instanceof THREE.Material) {
               o.material.side = THREE.FrontSide;
             }
           } else {
-            console.log(` ${o.name}`);
+            // console.log(` ${o.name}`);
           }
           for (const a of o.animations) {
-            console.log(` A: ${a.name}`);
+            // console.log(` A: ${a.name}`);
           }
         });
         resolve(new Model(gltf.scene, gltf.animations));

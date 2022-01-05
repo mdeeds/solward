@@ -121,6 +121,7 @@ export class Physics implements Ticker {
     const btScale = new this.ammo.btVector3(scale.x, scale.y, scale.z);
     shape.setLocalScaling(btScale);
     shape.setMargin(1.0 / btScale.x());
+    console.log(`Physics position: ${position.y} : -200`);
 
     ammoTransform.setOrigin(new this.ammo.btVector3(
       position.x, position.y, position.z));
@@ -137,18 +138,22 @@ export class Physics implements Ticker {
     this.physicsWorld.addRigidBody(body);
   }
 
-  addMovingBody(radius: number, threeObject: THREE.Object3D) {
+  addMovingBody(radius: number, threeObject: THREE.Object3D,
+    referenceObject: THREE.Object3D) {
+    console.log(`System position: ${referenceObject.position.y} : -200`);
+    console.log(`Player position: ${threeObject.position.y} : 0`);
     const shape = new this.ammo.btSphereShape(radius);
     const margin = 0.5;
     shape.setMargin(margin);
-    threeObject.position.set(0, 0, 0);
-
     const mass = radius * 5;
     const localInertia = new this.ammo.btVector3(0, 0, 0);
     shape.calculateLocalInertia(mass, localInertia);
     const transform = new this.ammo.btTransform();
     transform.setIdentity();
-    const pos = threeObject.position;
+    const pos = new THREE.Vector3();
+    pos.copy(threeObject.position);
+    pos.sub(referenceObject.position);
+    console.log(`Physics position: ${pos.y} 200`)
     transform.setOrigin(new this.ammo.btVector3(pos.x, pos.y, pos.z));
     const motionState = new this.ammo.btDefaultMotionState(transform);
     const rbInfo = new this.ammo.btRigidBodyConstructionInfo(

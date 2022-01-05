@@ -30,9 +30,8 @@ export class VR {
     let tickers: Ticker[] = [];
     this.initPhysics();
 
-    this.player = new Player();
-    this.physics.addMovingBody(1, this.player);
     const system = new THREE.Group();
+    this.player = new Player();
     this.proximityGroup = new ProximityGroup(this.player.position);
 
     this.setUpRenderer(renderer, scene, this.player, system);
@@ -64,14 +63,17 @@ export class VR {
 
       this.physics.tick(clock.elapsedTime, deltaS);
 
-      const physicsObject: Ammo.btRigidBody = this.player.userData['physicsBody'];
-      const ms = physicsObject.getMotionState();
-      const ammoTransformTmp = new this.ammo.btTransform();
-      ms.getWorldTransform(ammoTransformTmp);
-      const p = ammoTransformTmp.getOrigin();
-      system.position.set(-p.x(), -p.y(), -p.z());
-      this.proximityGroup.setObserverPosition(
-        new THREE.Vector3(p.x(), p.y(), p.z()));
+      const physicsObject: Ammo.btRigidBody =
+        this.player.userData['physicsBody'];
+      if (physicsObject) {
+        const ms = physicsObject.getMotionState();
+        const ammoTransformTmp = new this.ammo.btTransform();
+        ms.getWorldTransform(ammoTransformTmp);
+        const p = ammoTransformTmp.getOrigin();
+        system.position.set(-p.x(), -p.y(), -p.z());
+        this.proximityGroup.setObserverPosition(
+          new THREE.Vector3(p.x(), p.y(), p.z()));
+      }
       renderer.render(scene, camera);
       for (const view of tickers) {
         view.tick(clock.elapsedTime, deltaS);
