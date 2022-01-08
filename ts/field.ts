@@ -10,9 +10,11 @@ import { Fractaline } from "./fractaline";
 import { Physics } from "./physics";
 import { ProximityGroup } from "./proximityGroup";
 import { Model } from "./model";
+import { LandingGuide } from "./landingGuide";
 
 export class Field implements Ticker {
   private mission: Mission;
+  private landingGuide = new LandingGuide();
   constructor(private system: THREE.Group,
     private player: Player,
     scene: THREE.Scene | THREE.Group, private camera: THREE.Camera,
@@ -27,13 +29,14 @@ export class Field implements Ticker {
     this.player.updateMatrix();
     this.physics.addMovingBody(1, this.player, system);
 
+    const headlamp = new THREE.PointLight(0xfffffff, 1.0, 30, 2);
+    player.add(headlamp);
+    player.add(this.landingGuide);
+
     const light = new THREE.DirectionalLight(0xffffff, 1.0);
     light.position.set(0, SkySphere.kRadius / 2, 0);
     light.target.position.set(0, 0, 0);
     scene.add(light);
-
-    const headlamp = new THREE.PointLight(0xfffffff, 1.0, 30, 2);
-    player.add(headlamp);
 
     {
       const sunRadius = 695700;
@@ -99,6 +102,7 @@ export class Field implements Ticker {
     }
     this.buildLandingDisc();
     this.buildHome();
+    this.buildGym();
   }
 
   private async buildHome() {
@@ -123,6 +127,24 @@ export class Field implements Ticker {
     this.proximityGroup.insert(home.scene, home.scene.position);
   }
 
+  private async buildGym() {
+    const home = await Model.Load('model/gym.gltf',
+      { singleSided: true });
+    home.scene.updateMatrix();
+    const homeShape = this.physics.createShapeFromObject(home.scene);
+    home.scene.position.set(0, 500, 0);
+    home.scene.updateMatrix();
+    this.system.add(home.scene);
+    const worldPosition = new THREE.Vector3();
+    home.scene.getWorldPosition(worldPosition);
+
+    const transform = new THREE.Matrix4();
+    transform.copy(home.scene.matrix);
+    transform.multiply(this.system.matrix);
+    this.physics.addStaticBody(homeShape, home.scene.matrix);
+    this.proximityGroup.insert(home.scene, home.scene.position);
+  }
+
   private buildLandingDisc() {
     const geometry = new THREE.IcosahedronBufferGeometry(5, 3);
     const color = new THREE.Color(0x8080ff);
@@ -134,6 +156,11 @@ export class Field implements Ticker {
       (distance: number, intersection: THREE.Vector3, etaS: number) => {
         mesh.position.copy(intersection);
         const velocity = distance / etaS;
+        this.landingGuide.setDistance(distance, velocity);
+        const targetWorld = new THREE.Vector3();
+        targetWorld.copy(intersection);
+        targetWorld.sub(this.system.position);
+        this.landingGuide.lookAt(targetWorld);
         const deceleration = velocity / etaS;
         if (etaS < (1 / 10) && velocity > 15) {
           console.log(`FATAL in ${etaS} @ ${velocity}`);
