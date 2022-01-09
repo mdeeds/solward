@@ -10,7 +10,7 @@ export class Hand implements Ticker {
 
   private boosting = false;
   private boostMagnitude = 0;
-  private boostJitter = 1;
+  private boostJitter = 0.2;
   private boostMax = 1;
   constructor(
     index: number, renderer: THREE.WebGLRenderer,
