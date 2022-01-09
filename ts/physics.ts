@@ -186,16 +186,20 @@ export class Physics implements Ticker {
     const closestRayResultCallback = new this.ammo.ClosestRayResultCallback(
       from, to);
     this.physicsWorld.rayTest(from, to, closestRayResultCallback);
-    const btIntersection = closestRayResultCallback.get_m_hitPointWorld();
-    const intersection = new THREE.Vector3(
-      btIntersection.x(), btIntersection.y(), btIntersection.z());
-    btIntersection.op_sub(from);
-    const distanceM = btIntersection.length();
-    const etaS = distanceM / mps;
+    let distanceM: number = null;
+    let intersection: THREE.Vector3 = null;
+    let etaS: number = null;
     if (closestRayResultCallback.hasHit()) {
-      for (const cb of this.projectionCallbacks) {
-        cb(distanceM, intersection, etaS);
-      }
+      const btIntersection = closestRayResultCallback.get_m_hitPointWorld();
+      intersection = new THREE.Vector3(
+        btIntersection.x(), btIntersection.y(), btIntersection.z());
+      btIntersection.op_sub(from);
+      distanceM = btIntersection.length();
+      etaS = distanceM / mps;
+    }
+
+    for (const cb of this.projectionCallbacks) {
+      cb(distanceM, intersection, etaS);
     }
   }
 

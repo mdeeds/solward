@@ -110,8 +110,6 @@ export class Field implements Ticker {
       { singleSided: true });
     home.scene.updateMatrix();
 
-    console.log(`System position: ${this.system.position.y} : -200`);
-
     const homeShape = this.physics.createShapeFromObject(home.scene);
     home.scene.position.set(0, -200, 160);
     home.scene.updateMatrix();
@@ -154,6 +152,14 @@ export class Field implements Ticker {
     this.system.add(mesh);
     this.physics.addProjectionCallback(
       (distance: number, intersection: THREE.Vector3, etaS: number) => {
+        if (!distance) {
+          mesh.visible = false;
+          this.landingGuide.visible = false;
+          return;
+        } else {
+          mesh.visible = true;
+          this.landingGuide.visible = true;
+        }
         mesh.position.copy(intersection);
         const velocity = distance / etaS;
         this.landingGuide.setDistance(distance, velocity);
