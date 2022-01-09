@@ -19,10 +19,11 @@ export class VR {
   private physics: Physics;
   private player: Player;
   private proximityGroup: ProximityGroup;
+  private camera: THREE.Camera;
 
   private constructor(private ammo: typeof Ammo) {
     var renderer = new THREE.WebGLRenderer();
-    const camera = new THREE.PerspectiveCamera(
+    this.camera = new THREE.PerspectiveCamera(
       75, window.innerWidth / window.innerHeight, 0.1,
       SkySphere.kRadius * 1.01);
     const scene = new THREE.Scene();
@@ -37,8 +38,8 @@ export class VR {
     this.setUpRenderer(renderer, scene, this.player, system);
 
     switch (new URL(document.URL).searchParams.get('view')) {
-      case 'cinema': tickers.push(new Cinema(system, camera)); break;
-      default: tickers.push(new Field(system, this.player, scene, camera,
+      case 'cinema': tickers.push(new Cinema(system, this.camera)); break;
+      default: tickers.push(new Field(system, this.player, scene, this.camera,
         this.physics, this.proximityGroup)); break;
     }
 
@@ -49,7 +50,7 @@ export class VR {
       controllers.push(h);
       tickers.push(h);
     }
-    this.player.add(camera);
+    this.player.add(this.camera);
 
     const clock = new THREE.Clock();
     const gamepads = new Gamepads();
@@ -59,7 +60,8 @@ export class VR {
     renderer.setAnimationLoop(() => {
       const deltaS = clock.getDelta();
       this.updateBoost(controllers, deltaS);
-      gamepads.updateRotation(this.player, renderer, camera);
+      gamepads.updateRotation(this.player, renderer, this.camera);
+      this.handleKeys(this.camera, out, right, this.player);
 
       this.physics.tick(clock.elapsedTime, deltaS);
 
@@ -74,7 +76,7 @@ export class VR {
         this.proximityGroup.setObserverPosition(
           new THREE.Vector3(p.x(), p.y(), p.z()));
       }
-      renderer.render(scene, camera);
+      renderer.render(scene, this.camera);
       for (const view of tickers) {
         view.tick(clock.elapsedTime, deltaS);
       }
@@ -84,7 +86,7 @@ export class VR {
       // Gamepads.getOutVector(camera, out);
       // t.setText(`out: ${out.x.toFixed(2)} ${out.y.toFixed(2)} ${out.z.toFixed(2)}`);
     });
-    this.addKeyboardHandler(camera, out, right, this.player);
+    this.addKeyboardHandler();
   }
 
   static async make(): Promise<VR> {
@@ -115,32 +117,37 @@ export class VR {
 
   }
 
-  private addKeyboardHandler(
-    camera: THREE.Camera, out: THREE.Vector3, right: THREE.Vector3,
+  private keyCodesDown = new Set<string>();
+
+  private handleKeys(camera: THREE.Camera, out: THREE.Vector3, right: THREE.Vector3,
     player: THREE.Group) {
-    document.querySelector('body').addEventListener('keydown',
-      (ev: KeyboardEvent) => {
-        Gamepads.getOutVector(camera, out);
-        Gamepads.getRightVector(camera, right);
-        this.tmp.set(0, 0, 0);
-        const impulse = 100 * 9.8;
-        switch (ev.code) {
-          case 'KeyU': this.tmp.set(0, 0, impulse); break;
-          case 'Space':
-          case 'KeyO': this.tmp.set(0, 0, -impulse); break;
-          case 'KeyI': this.tmp.set(0, impulse, 0); break;
-          case 'KeyK': this.tmp.set(0, -impulse, 0); break;
-          case 'KeyJ': this.tmp.set(-impulse, 0, 0); break;
-          case 'KeyL': this.tmp.set(impulse, 0, 0); break;
-          case 'ArrowLeft': player.rotateOnAxis(out, -Math.PI / 32); break;
-          case 'ArrowRight': player.rotateOnAxis(out, Math.PI / 32); break;
-          case 'ArrowDown': player.rotateOnAxis(right, -Math.PI / 32); break;
-          case 'ArrowUp': player.rotateOnAxis(right, Math.PI / 32); break;
-          case 'KeyQ': camera.rotateY(Math.PI / 32); break;
-          case 'KeyW': camera.rotateY(-Math.PI / 32); break;
-        }
-        this.physics.applyForce(this.tmp, player);
-      });
+    Gamepads.getOutVector(camera, out);
+    Gamepads.getRightVector(camera, right);
+    this.tmp.set(0, 0, 0);
+    const impulse = 100 * 9.8;
+    if (this.keyCodesDown.has('KeyU')) this.tmp.set(0, 0, impulse);
+    if (this.keyCodesDown.has('KeyO')) this.tmp.set(0, 0, -impulse);
+    if (this.keyCodesDown.has('KeyI')) this.tmp.set(0, impulse, 0);
+    if (this.keyCodesDown.has('KeyK')) this.tmp.set(0, -impulse, 0);
+    if (this.keyCodesDown.has('KeyJ')) this.tmp.set(-impulse, 0, 0);
+    if (this.keyCodesDown.has('KeyL')) this.tmp.set(impulse, 0, 0);
+    if (this.keyCodesDown.has('ArrowLeft')) player.rotateOnAxis(out, -Math.PI / 32);
+    if (this.keyCodesDown.has('ArrowRight')) player.rotateOnAxis(out, Math.PI / 32);
+    if (this.keyCodesDown.has('ArrowDown')) player.rotateOnAxis(right, -Math.PI / 32);
+    if (this.keyCodesDown.has('ArrowUp')) player.rotateOnAxis(right, Math.PI / 32);
+    if (this.keyCodesDown.has('KeyW')) camera.rotateX(Math.PI / 32);
+    if (this.keyCodesDown.has('KeyA')) camera.rotateY(Math.PI / 32);
+    if (this.keyCodesDown.has('KeyS')) camera.rotateX(-Math.PI / 32);
+    if (this.keyCodesDown.has('KeyD')) camera.rotateY(-Math.PI / 32);
+    this.physics.applyForce(this.tmp, player);
+  }
+
+  private addKeyboardHandler() {
+    const body = document.querySelector('body');
+    body.addEventListener('keydown',
+      (ev: KeyboardEvent) => { this.keyCodesDown.add(ev.code); });
+    body.addEventListener('keyup',
+      (ev: KeyboardEvent) => { this.keyCodesDown.delete(ev.code); });
   }
 
   private updateBoost(controllers: Hand[], deltaS: number) {

@@ -227,6 +227,7 @@ export class Physics implements Ticker {
     if (forceKgMpSS.lengthSq() === 0) {
       return;
     }
+    console.log(`Force: ${forceKgMpSS.length()}`);
     const ammoVector = new this.ammo.btVector3(
       forceKgMpSS.x, forceKgMpSS.y, forceKgMpSS.z);
     const physicsObject: Ammo.btRigidBody = object.userData['physicsBody'];
