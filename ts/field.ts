@@ -163,6 +163,10 @@ export class Field implements Ticker {
         mesh.position.copy(intersection);
         const velocity = distance / etaS;
         this.landingGuide.setDistance(distance, velocity);
+        this.landingGuide.setTargetDetails({
+          ETA: etaS.toFixed(2) + 's',
+          Range: distance.toFixed(1) + 'm',
+        })
         const targetWorld = new THREE.Vector3();
         targetWorld.copy(intersection);
         targetWorld.sub(this.system.position);
