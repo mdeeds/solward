@@ -73,8 +73,8 @@ export class Field implements Ticker {
     asteroidGeometry.computeVertexNormals();
 
     const f = Fractaline.fromBufferGeometry(asteroidGeometry);
-    f.subdivide(null, 0);
-    f.subdivide(null, 0);
+    f.subdivide(0.5);
+    f.subdivide(0.01);
     f.updateGeometry();
     console.log('subdivide done');
 

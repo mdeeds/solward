@@ -21,7 +21,7 @@ class Edge {
   private children: Edge[] = null;
   constructor(readonly v1: Vertex, readonly v2: Vertex) {
   }
-  getMidpoint(r: Random3): Vertex {
+  getMidpoint(amount: number): Vertex {
     if (this.midpoint) {
       return this.midpoint;
     }
@@ -33,17 +33,17 @@ class Edge {
     v.copy(this.v1.p);
     v.sub(this.v2.p);
     const length = v.length();
-    out.multiplyScalar(0.6 * length * (Math.random() - 0.5));
+    out.multiplyScalar(amount * length * (Math.random() - 0.5));
     mid.add(out);
     const n = new THREE.Vector3();
     n.lerpVectors(this.v1.n, this.v2.n, 0.5);
     this.midpoint = new Vertex(mid, n);
     return this.midpoint;
   }
-  getChildren(r: Random3): Edge[] {
+  getChildren(amount: number): Edge[] {
     if (!this.children) {
       this.children = [];
-      this.getMidpoint(r);
+      this.getMidpoint(amount);
       this.children.push(new Edge(this.v1, this.midpoint));
       this.children.push(new Edge(this.v2, this.midpoint));
     }
@@ -52,8 +52,8 @@ class Edge {
 
   // Returns the child which starts or ends at v
   // v must be either v1 or v2
-  getChild(v: Vertex, r: Random3): Edge {
-    this.getChildren(r);
+  getChild(v: Vertex, amount: number): Edge {
+    this.getChildren(amount);
     if (this.children[0].v1 == v) {
       return this.children[0];
     } else if (this.children[1].v1 == v) {
@@ -101,22 +101,22 @@ class Triangle {
     return ab.length() / 2.0;
   }
 
-  subdivide(random: Random3): Triangle[] {
+  subdivide(amount: number): Triangle[] {
     const result: Triangle[] = [];
 
-    const abVertex = this.ab.getMidpoint(random);
-    const bcVertex = this.bc.getMidpoint(random);
-    const caVertex = this.ca.getMidpoint(random);
+    const abVertex = this.ab.getMidpoint(amount);
+    const bcVertex = this.bc.getMidpoint(amount);
+    const caVertex = this.ca.getMidpoint(amount);
     const abUV = UVPoint.midpoint(this.auv, this.buv);
     const bcUV = UVPoint.midpoint(this.buv, this.cuv);
     const caUV = UVPoint.midpoint(this.cuv, this.auv);
 
     const aEdge = new Edge(
-      this.ab.getMidpoint(random), this.ca.getMidpoint(random));
+      this.ab.getMidpoint(amount), this.ca.getMidpoint(amount));
     const bEdge = new Edge(
-      this.ab.getMidpoint(random), this.bc.getMidpoint(random));
+      this.ab.getMidpoint(amount), this.bc.getMidpoint(amount));
     const cEdge = new Edge(
-      this.bc.getMidpoint(random), this.ca.getMidpoint(random));
+      this.bc.getMidpoint(amount), this.ca.getMidpoint(amount));
 
     result.push(
       new Triangle(aEdge, bEdge, cEdge,
@@ -124,23 +124,23 @@ class Triangle {
         caUV, abUV, bcUV));
     result.push(
       new Triangle(
-        this.ab.getChild(this.a, random),
+        this.ab.getChild(this.a, amount),
         aEdge,
-        this.ca.getChild(this.a, random),
+        this.ca.getChild(this.a, amount),
         this.a, abVertex, caVertex,
         this.auv, abUV, caUV));
     result.push(
       new Triangle(
-        this.ab.getChild(this.b, random),
-        this.bc.getChild(this.b, random),
+        this.ab.getChild(this.b, amount),
+        this.bc.getChild(this.b, amount),
         bEdge,
         abVertex, this.b, bcVertex,
         abUV, this.buv, bcUV));
     result.push(
       new Triangle(
         cEdge,
-        this.bc.getChild(this.c, random),
-        this.ca.getChild(this.c, random),
+        this.bc.getChild(this.c, amount),
+        this.ca.getChild(this.c, amount),
         caVertex, bcVertex, this.c,
         caUV, bcUV, this.cuv));
 
@@ -266,14 +266,14 @@ export class Fractaline extends THREE.BufferGeometry {
     return result;
   }
 
-  subdivide(r: Random3, minArea: number) {
+  subdivide(amount: number, minArea: number = 0) {
     const newTriangles: Triangle[] = [];
     for (const t of this.triangles) {
       if (t.area() < minArea) {
         newTriangles.push(t);
         continue;
       }
-      for (const newTri of t.subdivide(r)) {
+      for (const newTri of t.subdivide(amount)) {
         newTriangles.push(newTri);
       }
     }

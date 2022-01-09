@@ -60,7 +60,7 @@ export class Debug4 {
         }
       }
       if (fractaline && ev.code === 'KeyD') {
-        fractaline.subdivide(random, 0.1);
+        fractaline.subdivide(0.6, 0.1);
         fractaline.updateGeometry();
       }
       if (fractaline && ev.code === 'KeyS') {
