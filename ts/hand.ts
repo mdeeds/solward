@@ -9,6 +9,9 @@ export class Hand implements Ticker {
   readonly gamepad: Gamepad;
 
   private boosting = false;
+  private boostMagnitude = 0;
+  private boostJitter = 1;
+  private boostMax = 1;
   constructor(
     index: number, renderer: THREE.WebGLRenderer,
     scene: THREE.Scene | THREE.Group) {
@@ -39,6 +42,7 @@ export class Hand implements Ticker {
 
   public copyBoostVector(out: THREE.Vector3) {
     this.booster.getWorldDirection(out);
+    out.multiplyScalar(this.boostMagnitude);
   }
 
   private handleSelectStart(ev: any) {
@@ -81,11 +85,17 @@ export class Hand implements Ticker {
         return new THREE.Line(geometry, material);
 
       default:
-        throw new Error(`not supported: ${data.targetRayMode}`);
+        throw new Error(`not supported: ${data.targetRayMode}`)
     }
   }
 
   tick(elapsedS: number, deltaS: number) {
+    if (this.isBoosting) {
+      this.boostMagnitude += this.boostJitter * deltaS;
+      this.boostMagnitude = Math.max(this.boostMagnitude, this.boostMax);
+    } else {
+      this.boostMagnitude = 0;
+    }
     this.booster.tick(elapsedS, deltaS);
   }
 }
