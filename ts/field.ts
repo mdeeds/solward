@@ -167,9 +167,16 @@ export class Field implements Ticker {
           ETA: etaS.toFixed(2) + 's',
           Range: distance.toFixed(1) + 'm',
         })
+        this.landingGuide.position.copy(this.camera.position);
+        // Example
+        // Asteroid is at 1000 in physics space
+        // Player is at 200 in physics space
+        // player.position = 0
+        // system.position = -200
+        // Asteroid is at 800 in world space
         const targetWorld = new THREE.Vector3();
         targetWorld.copy(intersection);
-        targetWorld.sub(this.system.position);
+        targetWorld.add(this.system.position);
         this.landingGuide.lookAt(targetWorld);
         const deceleration = velocity / etaS;
         if (etaS < (1 / 10) && velocity > 15) {

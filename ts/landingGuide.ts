@@ -6,10 +6,10 @@ export class LandingGuide extends THREE.Mesh {
   private tex: THREE.Texture;
   private targetDetails: object;
   constructor() {
-    const geometry = new THREE.PlaneGeometry(10, 10, 1, 1);
+    const geometry = new THREE.PlaneGeometry(4, 4, 1, 1);
     //const geometry = new THREE.BoxGeometry(5, 5, 5);
     geometry.rotateY(Math.PI);
-    geometry.translate(0, 1.5, 10);
+    geometry.translate(0, 0, 4);
     const canvas = document.createElement('canvas') as unknown as HTMLCanvasElement;
     canvas.width = 512;
     canvas.height = 512;
@@ -66,7 +66,7 @@ export class LandingGuide extends THREE.Mesh {
     this.tex.needsUpdate = true;
 
     this.ctx.font = 'monospace 25px';
-    this.ctx.fillStyle = '#fff';
+    this.ctx.fillStyle = '#8af';
     let y = 30;
     for (const k in this.targetDetails) {
       const v = this.targetDetails[k];
