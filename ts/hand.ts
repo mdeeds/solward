@@ -45,6 +45,10 @@ export class Hand implements Ticker {
     out.multiplyScalar(this.boostMagnitude);
   }
 
+  public on() {
+    this.handleSelectStart(null);
+  }
+
   private handleSelectStart(ev: any) {
     // const material = this.booster.material as THREE.MeshPhongMaterial;
     // material.setValues({ color: 0xff0000 });
@@ -59,10 +63,22 @@ export class Hand implements Ticker {
     }
   }
 
+  public off() {
+    this.handleSelectEnd(null);
+  }
+
+  public testBoosterPosition(scene: THREE.Group | THREE.Scene) {
+    scene.add(this.booster);
+    this.booster.translateZ(-1);
+    this.booster.rotateY(-Math.PI / 2);
+    this.booster.rotateZ(Math.PI);
+  }
+
   private handleSelectEnd(ev: any) {
     // const material = this.booster.material as THREE.MeshPhongMaterial;
     // material.setValues({ color: 0xffff88 });
     // material.needsUpdate = true;
+    this.boostMagnitude = 0;
     this.boosting = false;
     this.booster.off();
   }
@@ -92,7 +108,7 @@ export class Hand implements Ticker {
   tick(elapsedS: number, deltaS: number) {
     if (this.isBoosting) {
       this.boostMagnitude += this.boostJitter * deltaS;
-      this.boostMagnitude = Math.max(this.boostMagnitude, this.boostMax);
+      this.boostMagnitude = Math.min(this.boostMagnitude, this.boostMax);
     } else {
       this.boostMagnitude = 0;
     }

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Thruster } from "./thruster";
+import { Hand } from "./hand";
 
 export class Debug3 {
   constructor() {
@@ -18,18 +18,32 @@ export class Debug3 {
     const clock = new THREE.Clock();
     clock.start();
 
-    const booster = new Thruster('right');
-    booster.translateZ(-1);
-    booster.rotateY(-Math.PI / 2);
-    booster.rotateZ(Math.PI);
-    scene.add(booster);
+    const hand = new Hand(0, renderer, scene);
+    hand.testBoosterPosition(scene);
+    // const booster = new Thruster('right');
+    // booster.translateZ(-1);
+    // booster.rotateY(-Math.PI / 2);
+    // booster.rotateZ(Math.PI);
+    // scene.add(booster);
 
     renderer.setAnimationLoop(() => {
       const deltaS = clock.getDelta();
       const theta = clock.getElapsedTime() / 5;
       renderer.render(scene, camera);
-      booster.tick(clock.elapsedTime, deltaS);
+      hand.tick(clock.elapsedTime, deltaS);
     });
+
+    body.addEventListener('keydown', (ev) => {
+      if (ev.code == 'Space') {
+        hand.on();
+      }
+    });
+    body.addEventListener('keyup', (ev) => {
+      if (ev.code == 'Space') {
+        hand.off();
+      }
+    });
+
 
     console.log('done.');
   }
