@@ -50,7 +50,7 @@ export class Hand implements Ticker {
     // material.setValues({ color: 0xff0000 });
     // material.needsUpdate = true;
     this.boosting = true;
-    this.booster.on();
+    this.booster.on(this.boostMagnitude / this.boostMax);
     if (this.gamepad.hapticActuators.length > 0) {
       // Property 'pulse' does not exist on type 'GamepadHapticActuator'.
       if (this.gamepad.hapticActuators[0]['pulse']) {

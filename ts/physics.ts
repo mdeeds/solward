@@ -145,7 +145,7 @@ export class Physics implements Ticker {
     const shape = new this.ammo.btSphereShape(radius);
     const margin = 0.5;
     shape.setMargin(margin);
-    const mass = radius * 5;
+    const mass = 100;
     const localInertia = new this.ammo.btVector3(0, 0, 0);
     shape.calculateLocalInertia(mass, localInertia);
     const transform = new this.ammo.btTransform();

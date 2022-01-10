@@ -72,8 +72,9 @@ export class Thruster extends THREE.Object3D {
     }
   }
 
-  on() {
-    this.thrustScale.set(this.fullScale, this.fullScale, this.fullScale);
+  on(magnitude: number) {
+    const s = magnitude * this.fullScale;
+    this.thrustScale.set(s, s, s);
   }
 
   off() {
