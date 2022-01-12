@@ -31,7 +31,7 @@ export class Field implements Ticker {
 
     const headlamp = new THREE.PointLight(0xfffffff, 1.0, 30, 2);
     player.add(headlamp);
-    player.add(this.landingGuide);
+    camera.add(this.landingGuide);
 
     const light = new THREE.DirectionalLight(0xffffff, 1.0);
     light.position.set(0, SkySphere.kRadius / 2, 0);
