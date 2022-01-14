@@ -150,7 +150,7 @@ export class Field implements Ticker {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(10000, 10000, 10000);
     this.system.add(mesh);
-    this.physics.addProjectionCallback(
+    this.physics.addCollisionCallback(
       (distance: number, intersection: THREE.Vector3, etaS: number) => {
         if (!distance) {
           mesh.visible = false;

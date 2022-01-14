@@ -5,15 +5,21 @@ import { Ticker } from "./ticker";
 export type ProjectionCallback =
   (distance: number, intersection: THREE.Vector3, etaS: number) => void;
 
+export class RaycastResult {
+  constructor(readonly distanceM: number,
+    readonly intersection: THREE.Vector3,
+    readonly normal: THREE.Vector3) { }
+}
+
 export class Physics implements Ticker {
   private movingObjects: THREE.Object3D[] = [];
-  private projectionCallbacks: ProjectionCallback[] = [];
+  private collisionCallbacks: ProjectionCallback[] = [];
   public constructor(private physicsWorld: Ammo.btDiscreteDynamicsWorld,
     private ammo: typeof Ammo) {
   }
 
-  addProjectionCallback(cb: ProjectionCallback) {
-    this.projectionCallbacks.push(cb);
+  addCollisionCallback(cb: ProjectionCallback) {
+    this.collisionCallbacks.push(cb);
   }
 
   private addGeometryToShape(geometry: THREE.BufferGeometry,
@@ -171,6 +177,35 @@ export class Physics implements Ticker {
     this.physicsWorld.addRigidBody(body);
   }
 
+  // Input vectors are in Physics space.
+  public raycast(from: THREE.Vector3, to: THREE.Vector3): RaycastResult {
+    const btFrom = new this.ammo.btVector3(from.x, from.y, from.z);
+    const btTo = new this.ammo.btVector3(to.x, to.y, to.z);
+    let result: RaycastResult = null;
+    return this.runRayTest(btFrom, btTo);
+  }
+
+  private runRayTest(from: Ammo.btVector3, to: Ammo.btVector3): RaycastResult {
+    const closestRayResultCallback = new this.ammo.ClosestRayResultCallback(
+      from, to);
+    this.physicsWorld.rayTest(from, to, closestRayResultCallback);
+    // const allRayResultCallback = new this.ammo.AllHitsRayResultCallback(
+    //   from, to);
+    // this.physicsWorld.rayTest(from, to, allRayResultCallback);
+    if (closestRayResultCallback.hasHit()) {
+      const btIntersection = closestRayResultCallback.get_m_hitPointWorld();
+      const intersection = new THREE.Vector3(
+        btIntersection.x(), btIntersection.y(), btIntersection.z());
+      const btNormal = closestRayResultCallback.get_m_hitNormalWorld();
+      const normal = new THREE.Vector3(btNormal.x(), btNormal.y(), btNormal.z());
+      btIntersection.op_sub(from);
+      const distanceM = btIntersection.length();
+      return new RaycastResult(distanceM, intersection, normal);
+    } else {
+      return null;
+    }
+  }
+
   private rayTest(physicsObject: Ammo.btRigidBody) {
     const from = physicsObject.getWorldTransform().getOrigin();
     const to = new this.ammo.btVector3(0, 0, 0);
@@ -183,24 +218,13 @@ export class Physics implements Ticker {
     to.setValue(from.x(), from.y(), from.z());
     to.op_add(forward);
 
-    const closestRayResultCallback = new this.ammo.ClosestRayResultCallback(
-      from, to);
-    this.physicsWorld.rayTest(from, to, closestRayResultCallback);
-    let distanceM: number = null;
-    let intersection: THREE.Vector3 = null;
-    let etaS: number = null;
-    if (closestRayResultCallback.hasHit()) {
-      const btIntersection = closestRayResultCallback.get_m_hitPointWorld();
-      intersection = new THREE.Vector3(
-        btIntersection.x(), btIntersection.y(), btIntersection.z());
-      btIntersection.op_sub(from);
-      distanceM = btIntersection.length();
-      etaS = distanceM / mps;
-    }
-
-    for (const cb of this.projectionCallbacks) {
-      cb(distanceM, intersection, etaS);
-    }
+    const rr = this.runRayTest(from, to);
+    if (rr != null) {
+      const etaS = rr.distanceM / mps;
+      for (const cb of this.collisionCallbacks) {
+        cb(rr.distanceM, rr.intersection, etaS);
+      }
+    };
   }
 
   tick(elapsedS: number, deltaS: number) {
@@ -227,7 +251,7 @@ export class Physics implements Ticker {
     if (forceKgMpSS.lengthSq() === 0) {
       return;
     }
-    console.log(`Force: ${forceKgMpSS.length()}`);
+    // console.log(`Force: ${forceKgMpSS.length()}`);
     const ammoVector = new this.ammo.btVector3(
       forceKgMpSS.x, forceKgMpSS.y, forceKgMpSS.z);
     const physicsObject: Ammo.btRigidBody = object.userData['physicsBody'];

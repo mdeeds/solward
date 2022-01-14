@@ -18,6 +18,7 @@ export class VR {
   private tmp = new THREE.Vector3();
   private physics: Physics;
   private player: Player;
+  private system = new THREE.Group();
   private proximityGroup: ProximityGroup;
   private camera: THREE.Camera;
 
@@ -31,15 +32,14 @@ export class VR {
     let tickers: Ticker[] = [];
     this.initPhysics();
 
-    const system = new THREE.Group();
     this.player = new Player();
     this.proximityGroup = new ProximityGroup(this.player.position);
 
-    this.setUpRenderer(renderer, scene, this.player, system);
+    this.setUpRenderer(renderer, scene, this.player, this.system);
 
     switch (new URL(document.URL).searchParams.get('view')) {
-      case 'cinema': tickers.push(new Cinema(system, this.camera)); break;
-      default: tickers.push(new Field(system, this.player, scene, this.camera,
+      case 'cinema': tickers.push(new Cinema(this.system, this.camera)); break;
+      default: tickers.push(new Field(this.system, this.player, scene, this.camera,
         this.physics, this.proximityGroup)); break;
     }
 
@@ -72,9 +72,10 @@ export class VR {
         const ammoTransformTmp = new this.ammo.btTransform();
         ms.getWorldTransform(ammoTransformTmp);
         const p = ammoTransformTmp.getOrigin();
-        system.position.set(-p.x(), -p.y(), -p.z());
+        this.system.position.set(-p.x(), -p.y(), -p.z());
         this.proximityGroup.setObserverPosition(
           new THREE.Vector3(p.x(), p.y(), p.z()));
+        this.rotatePlayerIfLanded(physicsObject);
       }
       renderer.render(scene, this.camera);
       for (const view of tickers) {
@@ -95,6 +96,48 @@ export class VR {
         resolve(new VR(lib));
       });
     })
+  }
+
+  private rotatePlayerIfLanded(physicsObject: Ammo.btRigidBody) {
+    let playerOrigin = new THREE.Vector3(0, -1.05, 0);
+    let playerDown = new THREE.Vector3(0, -20, 0);
+    this.player.updateMatrix();
+    this.player.localToWorld(playerDown);
+    this.player.localToWorld(playerOrigin);
+    // Example: Player at 200, Camera at 210 in Physics space
+    // Player is at 0 in world space, camera is at 10 in world space.
+    // System position = -200
+    // We transfrom to physics space by subtracting the system position.
+    playerOrigin.sub(this.system.position);
+    const physicsPos = physicsObject.getWorldTransform().getOrigin();
+    playerDown.sub(this.system.position);
+    // console.log(`Physics Y: ${physicsPos.y()};` +
+    //   ` Close: ${cameraOrigin.y};` +
+    //   ` Down: ${cameraDown.y}`);
+
+    const rr = this.physics.raycast(playerOrigin, playerDown);
+    if (rr) {
+      const rotationAxis = new THREE.Vector3();
+      rotationAxis.copy(this.player.up);
+      rotationAxis.cross(rr.normal);
+      const magnitude = 0.01 * rotationAxis.length();
+      if (magnitude > 0) {
+        rotationAxis.normalize();
+        this.player.rotateOnWorldAxis(rotationAxis, magnitude);
+        // console.log(`Straightening: ${magnitude}; range: ${rr.distanceM}`);
+      }
+    } else {
+      const targetOrientation = new THREE.Vector3(0, 1, 0);
+      const rotationAxis = new THREE.Vector3(0, 1, 0);
+      this.player.updateMatrix();
+      this.player.localToWorld(rotationAxis);
+      rotationAxis.cross(targetOrientation);
+      const magnitude = 0.01 * rotationAxis.length();
+      if (magnitude > 0) {
+        rotationAxis.normalize();
+        this.player.rotateOnWorldAxis(rotationAxis, magnitude);
+      }
+    }
   }
 
   private setUpRenderer(renderer: THREE.WebGLRenderer, scene: THREE.Scene,
@@ -124,7 +167,7 @@ export class VR {
     Gamepads.getOutVector(camera, out);
     Gamepads.getRightVector(camera, right);
     this.tmp.set(0, 0, 0);
-    const impulse = 100 * 9.8;
+    const impulse = 100 * 9.8 * 2;
     if (this.keyCodesDown.has('KeyU')) this.tmp.set(0, 0, impulse);
     if (this.keyCodesDown.has('KeyO')) this.tmp.set(0, 0, -impulse);
     if (this.keyCodesDown.has('KeyI')) this.tmp.set(0, impulse, 0);
