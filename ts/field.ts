@@ -167,7 +167,6 @@ export class Field implements Ticker {
           ETA: etaS.toFixed(2) + 's',
           Range: distance.toFixed(1) + 'm',
         })
-        this.landingGuide.position.copy(this.camera.position);
         // Example
         // Asteroid is at 1000 in physics space
         // Player is at 200 in physics space

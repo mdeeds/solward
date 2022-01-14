@@ -219,12 +219,14 @@ export class Physics implements Ticker {
     to.op_add(forward);
 
     const rr = this.runRayTest(from, to);
-    if (rr != null) {
-      const etaS = rr.distanceM / mps;
-      for (const cb of this.collisionCallbacks) {
+    for (const cb of this.collisionCallbacks) {
+      if (rr != null) {
+        const etaS = rr.distanceM / mps;
         cb(rr.distanceM, rr.intersection, etaS);
+      } else {
+        cb(null, null, null);
       }
-    };
+    }
   }
 
   tick(elapsedS: number, deltaS: number) {

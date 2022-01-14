@@ -117,8 +117,9 @@ export class VR {
 
     const rr = this.physics.raycast(playerOrigin, playerDown);
     if (rr) {
-      const rotationAxis = new THREE.Vector3();
-      rotationAxis.copy(this.player.up);
+      const rotationAxis = new THREE.Vector3(0, 1, 0);
+      this.player.updateMatrix();
+      this.player.localToWorld(rotationAxis);
       rotationAxis.cross(rr.normal);
       const magnitude = 0.01 * rotationAxis.length();
       if (magnitude > 0) {
@@ -157,7 +158,6 @@ export class VR {
     sky.rotateX(-Math.PI * 23 / 32);
     sky.rotateZ(0.8);
     scene.add(sky);
-
   }
 
   private keyCodesDown = new Set<string>();
