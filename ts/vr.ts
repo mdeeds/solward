@@ -116,28 +116,21 @@ export class VR {
     //   ` Down: ${cameraDown.y}`);
 
     const rr = this.physics.raycast(playerOrigin, playerDown);
+
+    const rotationAxis = new THREE.Vector3(0, 1, 0);
+    this.player.updateMatrix();
+    this.player.localToWorld(rotationAxis);
     if (rr) {
-      const rotationAxis = new THREE.Vector3(0, 1, 0);
-      this.player.updateMatrix();
-      this.player.localToWorld(rotationAxis);
       rotationAxis.cross(rr.normal);
-      const magnitude = 0.01 * rotationAxis.length();
-      if (magnitude > 0) {
-        rotationAxis.normalize();
-        this.player.rotateOnWorldAxis(rotationAxis, magnitude);
-        // console.log(`Straightening: ${magnitude}; range: ${rr.distanceM}`);
-      }
     } else {
       const targetOrientation = new THREE.Vector3(0, 1, 0);
-      const rotationAxis = new THREE.Vector3(0, 1, 0);
-      this.player.updateMatrix();
-      this.player.localToWorld(rotationAxis);
       rotationAxis.cross(targetOrientation);
-      const magnitude = 0.01 * rotationAxis.length();
-      if (magnitude > 0) {
-        rotationAxis.normalize();
-        this.player.rotateOnWorldAxis(rotationAxis, magnitude);
-      }
+    }
+    const magnitude = 0.01 * rotationAxis.length();
+    if (magnitude > 0) {
+      rotationAxis.normalize();
+      this.player.rotateOnWorldAxis(rotationAxis, magnitude);
+      // console.log(`Straightening: ${magnitude}; range: ${rr.distanceM}`);
     }
   }
 
@@ -174,8 +167,8 @@ export class VR {
     if (this.keyCodesDown.has('KeyK')) this.tmp.set(0, -impulse, 0);
     if (this.keyCodesDown.has('KeyJ')) this.tmp.set(-impulse, 0, 0);
     if (this.keyCodesDown.has('KeyL')) this.tmp.set(impulse, 0, 0);
-    if (this.keyCodesDown.has('ArrowLeft')) player.rotateOnAxis(out, -Math.PI / 32);
-    if (this.keyCodesDown.has('ArrowRight')) player.rotateOnAxis(out, Math.PI / 32);
+    // if (this.keyCodesDown.has('ArrowLeft')) player.rotateOnAxis(out, -Math.PI / 32);
+    // if (this.keyCodesDown.has('ArrowRight')) player.rotateOnAxis(out, Math.PI / 32);
     if (this.keyCodesDown.has('ArrowDown')) player.rotateOnAxis(right, -Math.PI / 32);
     if (this.keyCodesDown.has('ArrowUp')) player.rotateOnAxis(right, Math.PI / 32);
     if (this.keyCodesDown.has('KeyW')) camera.rotateX(Math.PI / 32);

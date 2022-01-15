@@ -31,6 +31,8 @@ export class Field implements Ticker {
 
     const headlamp = new THREE.PointLight(0xfffffff, 1.0, 30, 2);
     player.add(headlamp);
+    this.landingGuide.position.set(0, 0, 0);
+    this.landingGuide.up.set(0, 1, 0);
     camera.add(this.landingGuide);
 
     const light = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -144,10 +146,11 @@ export class Field implements Ticker {
   }
 
   private buildLandingDisc() {
-    const geometry = new THREE.IcosahedronBufferGeometry(5, 3);
+    const geometry = new THREE.IcosahedronBufferGeometry(1, 3);
     const color = new THREE.Color(0x8080ff);
     const material = new THREE.MeshBasicMaterial({ color: color });
     const mesh = new THREE.Mesh(geometry, material);
+    mesh.scale.set(5, 5, 5);
     mesh.position.set(10000, 10000, 10000);
     this.system.add(mesh);
     this.physics.addCollisionCallback(
@@ -160,6 +163,8 @@ export class Field implements Ticker {
           mesh.visible = true;
           this.landingGuide.visible = true;
         }
+        const radius = Math.min(5, distance / 10);
+        mesh.scale.set(radius, radius, radius);
         mesh.position.copy(intersection);
         const velocity = distance / etaS;
         this.landingGuide.setDistance(distance, velocity);
@@ -176,6 +181,7 @@ export class Field implements Ticker {
         const targetWorld = new THREE.Vector3();
         targetWorld.copy(intersection);
         targetWorld.add(this.system.position);
+        this.landingGuide.updateMatrix();
         this.landingGuide.lookAt(targetWorld);
         const deceleration = velocity / etaS;
         if (etaS < (1 / 10) && velocity > 15) {
