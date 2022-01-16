@@ -180,7 +180,7 @@ export class Field implements Ticker {
         // Asteroid is at 800 in world space
         const targetWorld = new THREE.Vector3();
         targetWorld.copy(intersection);
-        targetWorld.add(this.system.position);
+        targetWorld.sub(this.system.position);
         this.landingGuide.updateMatrix();
         this.landingGuide.lookAt(targetWorld);
         const deceleration = velocity / etaS;
