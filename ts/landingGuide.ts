@@ -8,7 +8,7 @@ export class LandingGuide extends THREE.Mesh {
   constructor() {
     const geometry = new THREE.PlaneGeometry(4, 4, 1, 1);
     //const geometry = new THREE.BoxGeometry(5, 5, 5);
-    geometry.rotateY(Math.PI);
+    geometry.rotateY(Math.PI / 2);
     geometry.translate(0, 0, 4);
     const canvas = document.createElement('canvas') as unknown as HTMLCanvasElement;
     canvas.width = 512;
