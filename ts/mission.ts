@@ -9,10 +9,11 @@ export interface Mission {
 }
 
 export class Mission1 implements Mission {
+  constructor(private system: THREE.Group | THREE.Scene) { }
   getInitialPlayerPosition(): THREE.Vector3 {
     // // A-230
     // return new THREE.Vector3(-2059 + 125, 1128, -1306);
-    return new THREE.Vector3(-4000, 2250, -2612);
+    return new THREE.Vector3(-18470.9, 13761.4, -24387.4);
   }
 
   getInitialRotation(): THREE.Euler {
@@ -23,8 +24,13 @@ export class Mission1 implements Mission {
 
   }
 
+  private targetPosition = new THREE.Vector3(233, -55.8, 223.6);
+  private tmp = new THREE.Vector3();
   isComplete() {
-    return false;
+    this.tmp.copy(this.targetPosition);
+    this.tmp.add(this.system.position);
+    const remainingDistance = this.tmp.length();
+    return remainingDistance < 10;
   }
 
   isFailed() {

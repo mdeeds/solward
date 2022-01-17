@@ -20,7 +20,7 @@ export class Field implements Ticker {
     scene: THREE.Scene | THREE.Group, private camera: THREE.Camera,
     private physics: Physics, private proximityGroup: ProximityGroup) {
 
-    this.mission = new Mission1();
+    this.mission = new Mission1(scene);
     const initialPosition = this.mission.getInitialPlayerPosition();
     initialPosition.multiplyScalar(-1);
     this.system.position.copy(initialPosition);
