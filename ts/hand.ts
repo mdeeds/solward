@@ -14,10 +14,12 @@ export class Hand implements Ticker {
   private boostMax = 1;
   constructor(
     index: number, renderer: THREE.WebGLRenderer,
-    scene: THREE.Scene | THREE.Group, camera: THREE.Camera) {
+    scene: THREE.Scene | THREE.Group, camera: THREE.Camera,
+    system: THREE.Group | THREE.Scene) {
     const grip = renderer.xr.getControllerGrip(index);
     console.log(grip.name);
-    this.booster = new Thruster(index === 0 ? 'left' : 'right', camera);
+    this.booster = new Thruster(index === 0 ? 'left' : 'right',
+      camera, system);
 
     const pads = window.navigator.getGamepads();
     if (pads.length > index) {

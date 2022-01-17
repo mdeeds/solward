@@ -46,7 +46,8 @@ export class VR {
     const controllers: Hand[] = [];
 
     for (let i = 0; i < 2; ++i) {
-      const h = new Hand(i, renderer, this.player, this.camera);
+      const h = new Hand(i, renderer, this.player,
+        this.camera, this.system);
       controllers.push(h);
       tickers.push(h);
     }

@@ -18,7 +18,7 @@ export class Debug3 {
     const clock = new THREE.Clock();
     clock.start();
 
-    const hand = new Hand(0, renderer, scene, camera);
+    const hand = new Hand(0, renderer, scene, camera, scene);
     hand.testBoosterPosition(scene);
     // const booster = new Thruster('right');
     // booster.translateZ(-1);

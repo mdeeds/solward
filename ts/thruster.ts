@@ -13,7 +13,8 @@ export class Thruster extends THREE.Object3D {
   private fullScale: number;
   private thrustScale: THREE.Vector3;
 
-  constructor(readonly side: Side, private camera: THREE.Camera) {
+  constructor(readonly side: Side, private camera: THREE.Camera,
+    private system: THREE.Group | THREE.Scene) {
     super();
     const loader = new GLTFLoader();
     this.tex = new SimpleText(256, 256, true);
@@ -58,9 +59,9 @@ export class Thruster extends THREE.Object3D {
       this.timeRemainingS = Math.max(0, this.timeRemainingS - elapsedS);
       if (this.tex) {
         let m = "";
-        m += `Rx: ${this.camera.rotation.x.toFixed(3)}\n`;
-        m += `Ry: ${this.camera.rotation.y.toFixed(3)}\n`;
-        m += `Rz: ${this.camera.rotation.z.toFixed(3)}\n`;
+        m += `Px: ${-this.system.position.x.toFixed(1)}\n`;
+        m += `Py: ${-this.system.position.y.toFixed(1)}\n`;
+        m += `Pz: ${-this.system.position.z.toFixed(1)}\n`;
         this.tex.setText(m);
       }
     } else {
