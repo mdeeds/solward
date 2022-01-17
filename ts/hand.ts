@@ -10,7 +10,7 @@ export class Hand implements Ticker {
 
   private boosting = false;
   private boostMagnitude = 0;
-  private boostJitter = 0.2;
+  private boostJitter = 0.4;
   private boostMax = 1;
   constructor(
     index: number, renderer: THREE.WebGLRenderer,
@@ -56,13 +56,12 @@ export class Hand implements Ticker {
     // material.setValues({ color: 0xff0000 });
     // material.needsUpdate = true;
     this.boosting = true;
-    this.booster.on(this.boostMagnitude / this.boostMax);
-    if (this.gamepad.hapticActuators.length > 0) {
-      // Property 'pulse' does not exist on type 'GamepadHapticActuator'.
-      if (this.gamepad.hapticActuators[0]['pulse']) {
-        this.gamepad.hapticActuators[0]['pulse'](0.2, 0.5);
-      }
-    }
+    // if (this.gamepad.hapticActuators.length > 0) {
+    //   // Property 'pulse' does not exist on type 'GamepadHapticActuator'.
+    //   if (this.gamepad.hapticActuators[0]['pulse']) {
+    //     this.gamepad.hapticActuators[0]['pulse'](0.2, 0.5);
+    //   }
+    // }
   }
 
   public off() {
@@ -97,9 +96,7 @@ export class Hand implements Ticker {
         geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, - 1], 3));
         geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5, 0, 0, 0], 3));
-
         material = new THREE.LineBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending });
-
         return new THREE.Line(geometry, material);
 
       default:
@@ -108,7 +105,8 @@ export class Hand implements Ticker {
   }
 
   tick(elapsedS: number, deltaS: number) {
-    if (this.isBoosting) {
+    this.booster.setThrust(this.boostMagnitude);
+    if (this.isBoosting()) {
       this.boostMagnitude += this.boostJitter * deltaS;
       this.boostMagnitude = Math.min(this.boostMagnitude, this.boostMax);
     } else {

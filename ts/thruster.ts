@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RGBA_ASTC_10x10_Format } from "three";
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SimpleText } from "./simpleText";
@@ -49,6 +48,13 @@ export class Thruster extends THREE.Object3D {
 
   }
 
+  setThrust(magnitude: number) {
+    if (this.thrustScale) {
+      const s = (0.1 + (0.9 * magnitude)) * this.fullScale;
+      this.thrustScale.set(s, s, s);
+    }
+  }
+
   private lastUpdateS: number = 0;
   tick(elapsedS: number, deltaS: number) {
     if (elapsedS - this.lastUpdateS < 0.05) {
@@ -71,11 +77,6 @@ export class Thruster extends THREE.Object3D {
         this.tex.setText(m);
       }
     }
-  }
-
-  on(magnitude: number) {
-    const s = magnitude * this.fullScale;
-    this.thrustScale.set(s, s, s);
   }
 
   off() {

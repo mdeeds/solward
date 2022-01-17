@@ -36,5 +36,4 @@ export class Mission1 implements Mission {
   isFailed() {
     return true;
   }
-
 }

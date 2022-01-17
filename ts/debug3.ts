@@ -44,7 +44,6 @@ export class Debug3 {
       }
     });
 
-
     console.log('done.');
   }
 
