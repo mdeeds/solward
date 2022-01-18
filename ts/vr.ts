@@ -73,7 +73,7 @@ export class VR {
         const ammoTransformTmp = new this.ammo.btTransform();
         ms.getWorldTransform(ammoTransformTmp);
         const p = ammoTransformTmp.getOrigin();
-        this.system.position.set(-p.x(), -p.y(), -p.z());
+        this.system.position.set(-p.x(), -p.y() + 1, -p.z());
         this.proximityGroup.setObserverPosition(
           new THREE.Vector3(p.x(), p.y(), p.z()));
         this.rotatePlayerIfLanded(physicsObject);
