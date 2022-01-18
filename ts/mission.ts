@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { ConeBufferGeometry } from "three";
+import { Messaging } from "./messaging";
 
 export type MissionStatus = 'complete' | 'failed' | 'aborted';
 export class MissionResult {
@@ -15,8 +16,19 @@ export interface Mission {
 }
 
 export class Mission1 implements Mission {
-  private callbacks: ResultCallback[] = [];
-  constructor(private system: THREE.Group | THREE.Scene) { }
+  private resultPromise: Promise<MissionResult>;
+  private resolution: ResultCallback = null;
+  constructor(private system: THREE.Group | THREE.Scene) {
+    this.resultPromise = new Promise<MissionResult>((resolve) => {
+      this.resolution = resolve;
+    });
+    Messaging.listen('fatal', () => {
+      if (this.resolution) {
+        this.resolution(new MissionResult('failed'));
+        this.resolution = null;
+      }
+    });
+  }
   getInitialPlayerPosition(): THREE.Vector3 {
     // // A-230
     // return new THREE.Vector3(-2059 + 125, 1128, -1306);
@@ -32,9 +44,9 @@ export class Mission1 implements Mission {
     this.tmp.add(this.system.position);
     const remainingDistance = this.tmp.length();
     if (remainingDistance < 10) {
-      const result = new MissionResult('complete');
-      for (const cb of this.callbacks) {
-        cb(result);
+      if (this.resolution) {
+        this.resolution(new MissionResult('complete'));
+        this.resolution = null;
       }
     }
   }
@@ -43,8 +55,6 @@ export class Mission1 implements Mission {
   private tmp = new THREE.Vector3();
 
   result(): Promise<MissionResult> {
-    return new Promise<MissionResult>((resolve) => {
-      this.callbacks.push(resolve);
-    });
+    return this.resultPromise;
   }
 }

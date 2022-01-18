@@ -5,12 +5,13 @@ import { Random } from "./random";
 import { Ticker } from "./ticker";
 import { Player } from "./player";
 import { SkySphere } from "./skySphere";
-import { Mission, Mission1 } from "./mission";
+import { Mission, Mission1, MissionResult } from "./mission";
 import { Fractaline } from "./fractaline";
 import { Physics } from "./physics";
 import { ProximityGroup } from "./proximityGroup";
 import { Model } from "./model";
 import { LandingGuide } from "./landingGuide";
+import { Messaging } from "./messaging";
 
 export class Field implements Ticker {
   private mission: Mission;
@@ -21,6 +22,10 @@ export class Field implements Ticker {
     private physics: Physics, private proximityGroup: ProximityGroup) {
 
     this.mission = new Mission1(scene);
+    this.mission.result().then((result: MissionResult) => {
+      console.log(result);
+      scene.remove(this.system);
+    });
     const initialPosition = this.mission.getInitialPlayerPosition();
     initialPosition.multiplyScalar(-1);
     this.system.position.copy(initialPosition);
@@ -105,6 +110,7 @@ export class Field implements Ticker {
     this.buildLandingDisc();
     this.buildHome();
     this.buildGym();
+    this.buildAirlock();
   }
 
   private async buildHome() {
@@ -133,6 +139,24 @@ export class Field implements Ticker {
     home.scene.updateMatrix();
     const homeShape = this.physics.createShapeFromObject(home.scene);
     home.scene.position.set(0, 500, 0);
+    home.scene.updateMatrix();
+    this.system.add(home.scene);
+    const worldPosition = new THREE.Vector3();
+    home.scene.getWorldPosition(worldPosition);
+
+    const transform = new THREE.Matrix4();
+    transform.copy(home.scene.matrix);
+    transform.multiply(this.system.matrix);
+    this.physics.addStaticBody(homeShape, home.scene.matrix);
+    this.proximityGroup.insert(home.scene, home.scene.position);
+  }
+
+  private async buildAirlock() {
+    const home = await Model.Load('model/airlock-matt.gltf',
+      { singleSided: true });
+    home.scene.updateMatrix();
+    const homeShape = this.physics.createShapeFromObject(home.scene);
+    home.scene.position.set(-1000, 500, 0);
     home.scene.updateMatrix();
     this.system.add(home.scene);
     const worldPosition = new THREE.Vector3();
@@ -186,6 +210,7 @@ export class Field implements Ticker {
         const deceleration = velocity / etaS;
         if (etaS < (1 / 10) && velocity > 15) {
           console.log(`FATAL in ${etaS} @ ${velocity}`);
+          Messaging.broadcast('fatal');
         } else if (velocity < 5) {
           color.setHex(0x00ff00);
         } else if (deceleration > 2 * 9.8) {
