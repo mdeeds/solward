@@ -21,7 +21,7 @@ export class Field implements Ticker {
     scene: THREE.Scene | THREE.Group, private camera: THREE.Camera,
     private physics: Physics, private proximityGroup: ProximityGroup) {
 
-    this.mission = new Mission1(scene);
+    this.mission = new Mission1(system);
     this.mission.result().then((result: MissionResult) => {
       console.log(result);
       scene.remove(this.system);
@@ -228,7 +228,6 @@ export class Field implements Ticker {
   }
 
   tick(elapsedS: number, deltaS: number) {
-
+    this.mission.tick(elapsedS, deltaS);
   }
-
 }

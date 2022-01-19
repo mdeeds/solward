@@ -32,7 +32,8 @@ export class Mission1 implements Mission {
   getInitialPlayerPosition(): THREE.Vector3 {
     // // A-230
     // return new THREE.Vector3(-2059 + 125, 1128, -1306);
-    return new THREE.Vector3(-18470.9, 13761.4, -24387.4);
+    // return new THREE.Vector3(-18470.9, 13761.4, -24387.4);
+    return new THREE.Vector3(233, -55.8, 500);
   }
 
   getInitialRotation(): THREE.Euler {
@@ -43,7 +44,8 @@ export class Mission1 implements Mission {
     this.tmp.copy(this.targetPosition);
     this.tmp.add(this.system.position);
     const remainingDistance = this.tmp.length();
-    if (remainingDistance < 10) {
+    if (remainingDistance < 15) {
+      console.log('Done!');
       if (this.resolution) {
         this.resolution(new MissionResult('complete'));
         this.resolution = null;
