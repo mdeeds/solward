@@ -27,14 +27,14 @@ class Edge {
     }
     const mid = new THREE.Vector3();
     mid.lerpVectors(this.v1.p, this.v2.p, 0.5);
-    const out = new THREE.Vector3();
-    out.lerpVectors(this.v1.n, this.v2.n, 0.5);
-    const v = new THREE.Vector3();
-    v.copy(this.v1.p);
-    v.sub(this.v2.p);
-    const length = v.length();
-    out.multiplyScalar(amount * length * (Math.random() - 0.5));
-    mid.add(out);
+    const dv = new THREE.Vector3();
+    dv.copy(this.v1.p);
+    dv.sub(this.v2.p);
+    const oldLength = (this.v1.p.length() + this.v2.p.length()) / 2;
+    const totalAmount = amount * dv.length() / oldLength;
+    const newLength = oldLength * (1 + totalAmount * (Math.random() - 0.5));
+    mid.setLength(newLength);
+
     const n = new THREE.Vector3();
     n.lerpVectors(this.v1.n, this.v2.n, 0.5);
     this.midpoint = new Vertex(mid, n);

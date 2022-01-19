@@ -36,10 +36,10 @@ export class Debug5 {
         ballMesh = m.getMesh('Sphere');
         ballMesh.position.set(0, 0, -100);
         const f = Fractaline.fromBufferGeometry(ballMesh.geometry);
-        f.subdivide(null, 0.001);
-        f.subdivide(null, 0.001);
-        f.subdivide(null, 0.001);
-        f.subdivide(null, 0.001);
+        f.subdivide(0.3);
+        f.subdivide(0.5);
+        f.subdivide(0.3);
+        f.subdivide(0.3);
         f.updateGeometry();
         ballMesh.geometry = f;
         if (sp.get('wireframe')) {
@@ -53,9 +53,9 @@ export class Debug5 {
 
     renderer.setAnimationLoop(() => {
       const deltaS = clock.getDelta();
-      const theta = clock.getElapsedTime();
+      const theta = clock.getElapsedTime() / 3;
       if (ballMesh) {
-        ballMesh.rotation.y = theta;
+        ballMesh.position.z = -5 - 100 * (Math.cos(theta) + 1);
       }
       renderer.render(scene, camera);
     });
