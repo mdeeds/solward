@@ -66,7 +66,7 @@ export class Debug4 {
       if (fractaline && ev.code === 'KeyS') {
         const p = new THREE.Vector3();
         p.set(parseFloat(sp.get('x')), 0, 0);
-        fractaline.subdivideVsWorldPoint(p, parseFloat(sp.get('s')));
+        fractaline.subdivideVsLocalPoint(p, parseFloat(sp.get('s')));
         fractaline.updateGeometry();
       }
     });

@@ -280,9 +280,10 @@ export class Fractaline extends THREE.BufferGeometry {
     this.triangles = newTriangles;
   }
 
-  subdivideVsWorldPoint(p: THREE.Vector3, refArea: number) {
+  subdivideVsLocalPoint(p: THREE.Vector3, refArea: number): boolean {
     const d = new THREE.Vector3();
     const newTriangles: Triangle[] = [];
+    let modified = false;
     for (const t of this.triangles) {
       d.copy(t.a.p);
       d.sub(p);
@@ -291,11 +292,17 @@ export class Fractaline extends THREE.BufferGeometry {
         newTriangles.push(t);
         continue;
       }
-      for (const newTri of t.subdivide(null)) {
+      for (const newTri of t.subdivide(0.3)) {
         newTriangles.push(newTri);
+        modified = true;
       }
     }
-    this.triangles = newTriangles;
+    if (modified) {
+      console.log(
+        `Old tri: ${this.triangles.length}; new: ${newTriangles.length}`);
+      this.triangles = newTriangles;
+    }
+    return modified;
   }
 
   updateGeometry(): void {
@@ -321,11 +328,13 @@ export class Fractaline extends THREE.BufferGeometry {
       new THREE.BufferAttribute(new Float32Array(normals), 3, false));
     this.setAttribute('uv',
       new THREE.BufferAttribute(new Float32Array(uvs), 2, false));
-    this.setIndex(index);
-    this.computeVertexNormals();
     this.getAttribute('position').needsUpdate = true;
     this.getAttribute('normal').needsUpdate = true;
     this.getAttribute('uv').needsUpdate = true;
+    this.setIndex(index);
+    this.computeVertexNormals();
+    console.log(`Index: ${this.index.count}; ` +
+      `Pos: ${positions.length}; Tri: ${this.triangles.length}`);
   }
 
   private getOrSetIndex(v: Vertex, uv: UVPoint, m: Map<string, number>,

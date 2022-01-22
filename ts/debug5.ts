@@ -38,8 +38,6 @@ export class Debug5 {
         const f = Fractaline.fromBufferGeometry(ballMesh.geometry);
         f.subdivide(0.3);
         f.subdivide(0.5);
-        f.subdivide(0.3);
-        f.subdivide(0.3);
         f.updateGeometry();
         ballMesh.geometry = f;
         if (sp.get('wireframe')) {
@@ -56,6 +54,13 @@ export class Debug5 {
       const theta = clock.getElapsedTime() / 3;
       if (ballMesh) {
         ballMesh.position.z = -5 - 100 * (Math.cos(theta) + 1);
+        const p = new THREE.Vector3(0, 0, 0);
+        ballMesh.updateMatrix();
+        ballMesh.worldToLocal(p);
+        const f = ballMesh.geometry as Fractaline;
+        if (f.subdivideVsLocalPoint(p, 0.001)) {
+          f.updateGeometry();
+        }
       }
       renderer.render(scene, camera);
     });

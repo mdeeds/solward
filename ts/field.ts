@@ -88,10 +88,24 @@ export class Field implements Ticker {
     const asteroidMaterial = new THREE.MeshStandardMaterial(
       { color: 0xffffff, metalness: 1, roughness: 0.7 });
     const instancedMesh = new THREE.InstancedMesh(
-      f, asteroidMaterial, numAsteroids)
+      f, asteroidMaterial, numAsteroids * 20)
     this.system.add(instancedMesh);
-
     const dummy = new THREE.Object3D();
+
+    for (let i = 0; i < numAsteroids * 19; ++i) {
+      const range = 5000;
+      const r = 20 * posRandom.next() + 5;
+      dummy.position.set(
+        (posRandom.next() - 0.5) * range,
+        (posRandom.next() - 0.5) * range,
+        (posRandom.next() - 0.5) * range);
+      dummy.position.add(system.position);
+      dummy.scale.set(r, r, r);
+      dummy.updateMatrix();
+      instancedMesh.setMatrixAt(i, dummy.matrix);
+      this.proximityGroup.insert(instancedMesh, dummy.position);
+    } 2
+
     for (let i = 0; i < numAsteroids; ++i) {
       const range = 100000;
       const r = 30000 / (100 * posRandom.next() + 5);
@@ -107,6 +121,7 @@ export class Field implements Ticker {
       this.physics.addStaticBody(asteroidShape, dummy.matrix);
       this.proximityGroup.insert(instancedMesh, dummy.position);
     }
+
     this.buildLandingDisc();
     this.buildHome();
     this.buildGym();
